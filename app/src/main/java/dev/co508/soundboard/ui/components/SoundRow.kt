@@ -86,6 +86,29 @@ fun SoundRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+
+                val fadeInMs = row.sound.fadeInMs
+                val fadeOutMs = row.sound.fadeOutMs
+
+                if (fadeInMs > 0 || fadeOutMs > 0) {
+                    val fadeLabel = buildList {
+                        if (fadeInMs > 0) {
+                            add("↑ ${formatFadeDuration(fadeInMs)}")
+                        }
+                        if (fadeOutMs > 0) {
+                            add("↓ ${formatFadeDuration(fadeOutMs)}")
+                        }
+                    }.joinToString(" · ")
+
+                    Text(
+                        text = fadeLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+
                 if (row.isUnavailable) {
                     Text(
                         text = stringResource(R.string.unavailable),
@@ -188,5 +211,9 @@ private fun VolumePill(
         }
     }
 }
-
+private fun formatFadeDuration(durationMs: Int): String {
+    val seconds = durationMs / 1000
+    val halfSecond = durationMs % 1000 >= 500
+    return if (halfSecond) "$seconds.5s" else "${seconds}s"
+}
 private val CORNER_RADIUS = 24.dp

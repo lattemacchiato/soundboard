@@ -11,6 +11,14 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import dev.co508.soundboard.data.Sound
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import android.os.SystemClock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,6 +44,72 @@ class SoundboardEngine(
     private val context: Context,
 ) {
     private val players = mutableMapOf<String, ExoPlayer>()
+    private val fadeScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val fadeJobs = mutableMapOf<String, Job>()
+    private val fadeFactors = mutableMapOf<String, Float>()
+    private val fadingOut = mutableSetOf<String>()
+
+    var allowSimultaneousPlayback: Boolean = true
+        private set
+
+    fun setAllowSimultaneousPlayback(allow: Boolean) {
+        allowSimultaneousPlayback = allow
+        if (!allow) {
+            val playing = _statuses.value.filterValues { it == PlaybackStatus.PLAYING }.keys.toList()
+            // Preserve one currently playing sound when switching modes.
+            playing.drop(1).forEach(::stopImmediately)
+        }
+    }
+
+    private fun stopImmediately(id: String) {
+        // release() also cancels pending fade completions and resets playback.
+        release(id)
+    }
+
+    private fun stopOtherPlayingSounds(exceptId: String) {
+        if (allowSimultaneousPlayback) return
+        _statuses.value.filter { (id, status) ->
+            id != exceptId && status == PlaybackStatus.PLAYING
+        }.keys.toList().forEach(::stopImmediately)
+    }
+
+    fun isFadingOut(id: String): Boolean = id in fadingOut
+
+    private fun cancelFade(id: String) {
+        fadeJobs.remove(id)?.cancel()
+        fadingOut.remove(id)
+    }
+
+    private fun updateVolume(id: String) {
+        players[id]?.volume = (gains[id] ?: 1f) * duckFactor * (fadeFactors[id] ?: 1f)
+    }
+
+    private fun animateFade(id: String, target: Float, durationMs: Int, finished: () -> Unit = {}) {
+        cancelFade(id)
+        if (target == 0f) fadingOut.add(id)
+        val start = fadeFactors[id] ?: 1f
+        val duration = durationMs.coerceIn(0, 5000)
+        if (duration == 0 || start == target) {
+            fadingOut.remove(id)
+            fadeFactors[id] = target
+            updateVolume(id)
+            finished()
+            return
+        }
+        fadeJobs[id] = fadeScope.launch {
+            val startTime = SystemClock.uptimeMillis()
+            while (true) {
+                val fraction = ((SystemClock.uptimeMillis() - startTime).toFloat() / duration).coerceIn(0f, 1f)
+                fadeFactors[id] = start + (target - start) * fraction
+                updateVolume(id)
+                if (fraction >= 1f) break
+                delay(16L)
+            }
+            fadeJobs.remove(id)
+            fadingOut.remove(id)
+            finished()
+        }
+    }
 
     /** Gains last requested by the UI, kept so ducking can be applied on top. */
     private val gains = mutableMapOf<String, Float>()
@@ -66,12 +140,17 @@ class SoundboardEngine(
         }
         val player = players.getOrPut(sound.id) { buildPlayer(sound) }
         gains[sound.id] = sound.gain
-        player.volume = sound.gain * duckFactor
+        cancelFade(sound.id)
+        fadeFactors[sound.id] = 0f
+        updateVolume(sound.id)
         player.repeatMode = if (sound.loop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+        if (!focus.request()) return
+        stopOtherPlayingSounds(sound.id)
         if (!focus.request()) return
         pausedByFocusLoss.remove(sound.id)
         player.play()
         setStatus(sound.id, PlaybackStatus.PLAYING)
+        animateFade(sound.id, 1f, sound.fadeInMs)
     }
 
     /** Start from the beginning even if this sound is currently playing or paused. */
@@ -81,13 +160,18 @@ class SoundboardEngine(
         }
         val player = players.getOrPut(sound.id) { buildPlayer(sound) }
         gains[sound.id] = sound.gain
-        player.volume = sound.gain * duckFactor
+        cancelFade(sound.id)
+        fadeFactors[sound.id] = 0f
+        updateVolume(sound.id)
         player.repeatMode = if (sound.loop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+        if (!focus.request()) return
+        stopOtherPlayingSounds(sound.id)
         if (!focus.request()) return
         pausedByFocusLoss.remove(sound.id)
         player.seekTo(0L)
         player.play()
         setStatus(sound.id, PlaybackStatus.PLAYING)
+        animateFade(sound.id, 1f, sound.fadeInMs)
     }
 
     /** Apply a changed loop setting without restarting a running player. */
@@ -95,20 +179,32 @@ class SoundboardEngine(
         players[id]?.repeatMode = if (loop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
     }
 
-    fun pause(id: String) {
-        val player = players[id] ?: return
-        player.pause()
+    private fun pauseNow(id: String) {
+        cancelFade(id)
+        players[id]?.pause()
         pausedByFocusLoss.remove(id)
-        // An unavailable sound stays unavailable; pausing it must not present
-        // it as a healthy, paused row.
-        if (_statuses.value[id] != PlaybackStatus.UNAVAILABLE) {
-            setStatus(id, PlaybackStatus.PAUSED)
-        }
+        if (_statuses.value[id] != PlaybackStatus.UNAVAILABLE) setStatus(id, PlaybackStatus.PAUSED)
         abandonFocusIfSilent()
     }
 
+    fun pause(id: String) = pauseNow(id)
+
+    fun pause(sound: Sound) {
+        if (_statuses.value[sound.id] != PlaybackStatus.PLAYING) return
+        animateFade(sound.id, 0f, sound.fadeOutMs) { pauseNow(sound.id) }
+    }
+
+    /** Fade out and reset to the beginning; a subsequent tap starts fresh. */
+    fun stop(sound: Sound) {
+        if (_statuses.value[sound.id] != PlaybackStatus.PLAYING) {
+            release(sound.id)
+            return
+        }
+        animateFade(sound.id, 0f, sound.fadeOutMs) { release(sound.id) }
+    }
+
     fun toggle(sound: Sound) {
-        if (_statuses.value[sound.id] == PlaybackStatus.PLAYING) pause(sound.id) else play(sound)
+        if (_statuses.value[sound.id] == PlaybackStatus.PLAYING && !isFadingOut(sound.id)) pause(sound) else play(sound)
     }
 
     /** Applies a new relative volume live, without interrupting playback. */
@@ -117,7 +213,7 @@ class SoundboardEngine(
         gain: Float,
     ) {
         gains[id] = gain
-        players[id]?.volume = gain * duckFactor
+        updateVolume(id)
     }
 
     /** Pauses every sound. Backs the notification's "Stop all" action. */
@@ -126,11 +222,13 @@ class SoundboardEngine(
             .filterValues { it == PlaybackStatus.PLAYING }
             .keys
             .toList()
-            .forEach(::pause)
+            .forEach(::pauseNow)
     }
 
     /** Releases one sound's player — call when it is removed from the board. */
     fun release(id: String) {
+        cancelFade(id)
+        fadeFactors.remove(id)
         players.remove(id)?.release()
         gains.remove(id)
         pausedByFocusLoss.remove(id)
@@ -140,6 +238,11 @@ class SoundboardEngine(
 
     /** Releases everything. The engine is unusable afterwards. */
     fun releaseAll() {
+        fadeJobs.values.toList().forEach { it.cancel() }
+        fadeJobs.clear()
+        fadeFactors.clear()
+        fadingOut.clear()
+        fadeScope.cancel()
         players.values.forEach(ExoPlayer::release)
         players.clear()
         gains.clear()
@@ -172,6 +275,8 @@ class SoundboardEngine(
                                 _statuses.value[sound.id] != PlaybackStatus.UNAVAILABLE
                             ) {
                                 // One-shot reached its end: reset so the next tap starts at zero.
+                                cancelFade(sound.id)
+                                fadeFactors.remove(sound.id)
                                 pause()
                                 seekTo(0L)
                                 pausedByFocusLoss.remove(sound.id)
@@ -181,6 +286,7 @@ class SoundboardEngine(
                         }
 
                         override fun onPlayerError(error: PlaybackException) {
+                            cancelFade(sound.id)
                             setStatus(sound.id, PlaybackStatus.UNAVAILABLE)
                             abandonFocusIfSilent()
                         }
@@ -214,6 +320,7 @@ class SoundboardEngine(
                     .keys
                     .forEach { id ->
                         pausedByFocusLoss += id
+                        cancelFade(id)
                         players[id]?.pause()
                         setStatus(id, PlaybackStatus.PAUSED)
                     }
@@ -224,6 +331,8 @@ class SoundboardEngine(
             AudioManager.AUDIOFOCUS_GAIN -> {
                 applyDuck(1f)
                 pausedByFocusLoss.toList().forEach { id ->
+                    fadeFactors[id] = 1f
+                    updateVolume(id)
                     players[id]?.play()
                     setStatus(id, PlaybackStatus.PLAYING)
                 }
@@ -235,7 +344,7 @@ class SoundboardEngine(
     private fun applyDuck(factor: Float) {
         duckFactor = factor
         players.forEach { (id, player) ->
-            player.volume = (gains[id] ?: 1f) * factor
+            updateVolume(id)
         }
     }
 

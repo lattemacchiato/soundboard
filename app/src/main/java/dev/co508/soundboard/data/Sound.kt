@@ -21,6 +21,8 @@ data class Sound(
     val volumePercent: Int = DEFAULT_VOLUME_PERCENT,
     val loop: Boolean = true,
     val tapBehavior: TapBehavior = TapBehavior.PAUSE_RESUME,
+    val fadeInMs: Int = 0,
+    val fadeOutMs: Int = 0,
 ) {
     /**
      * Linear amplitude multiplier for ExoPlayer's `volume` property.

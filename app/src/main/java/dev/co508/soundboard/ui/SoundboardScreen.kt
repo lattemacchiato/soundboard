@@ -28,6 +28,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -237,6 +238,8 @@ fun SoundboardScreen(
                     }
                 }
             }
+            FadeSlider("Fade-in", currentSound.fadeInMs) { viewModel.setFade(sound.id, true, it) }
+            FadeSlider("Fade-out", currentSound.fadeOutMs) { viewModel.setFade(sound.id, false, it) }
             ListItem(
                 headlineContent = { Text(stringResource(R.string.edit)) },
                 leadingContent = { Icon(Icons.Filled.Edit, contentDescription = null) },
@@ -310,3 +313,18 @@ private fun EmptyState(modifier: Modifier = Modifier) {
 }
 
 private const val AUDIO_MIME_TYPE = "audio/*"
+
+@Composable
+private fun FadeSlider(label: String, durationMs: Int, onCommit: (Int) -> Unit) {
+    var value by remember(durationMs) { mutableStateOf(durationMs.toFloat()) }
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+        Text("$label: " + if (value < 250f) "Off" else "%.1f s".format(java.util.Locale.US, value / 1000f))
+        Slider(
+            value = value,
+            onValueChange = { value = (it / 500f).toInt().coerceIn(0, 10) * 500f },
+            onValueChangeFinished = { onCommit(value.toInt()) },
+            valueRange = 0f..5000f,
+            steps = 9,
+        )
+    }
+}

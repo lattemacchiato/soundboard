@@ -3,6 +3,12 @@ package dev.co508.soundboard.ui.components
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
@@ -51,6 +57,13 @@ fun AppScaffold() {
     val boards by app.repository.boards.collectAsState(initial = emptyList())
     val activeBoardId by app.repository.activeBoardId.collectAsState(initial = "default")
     val defaultTapBehavior by app.repository.defaultTapBehavior.collectAsState(initial = TapBehavior.PAUSE_RESUME)
+    val defaultFadeInMs by app.repository.defaultFadeInMs.collectAsState(initial = 0)
+    val defaultFadeOutMs by app.repository.defaultFadeOutMs.collectAsState(initial = 0)
+    val allowSimultaneousPlayback by app.repository.allowSimultaneousPlayback.collectAsState(initial = true)
+
+    LaunchedEffect(allowSimultaneousPlayback) {
+        app.engine.setAllowSimultaneousPlayback(allowSimultaneousPlayback)
+    }
     var editor by remember { mutableStateOf<BoardEditor?>(null) }
     var deleteBoardId by remember { mutableStateOf<String?>(null) }
 
@@ -140,6 +153,31 @@ fun AppScaffold() {
                             }
                         },
                         modifier = Modifier.padding(horizontal = 12.dp),
+                    )
+                }
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp))
+                DefaultFadeSlider("Default fade-in", defaultFadeInMs) { ms ->
+                    if (!locked) scope.launch { app.repository.setDefaultFade(true, ms) }
+                }
+                DefaultFadeSlider("Default fade-out", defaultFadeOutMs) { ms ->
+                    if (!locked) scope.launch { app.repository.setDefaultFade(false, ms) }
+                }
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Allow simultaneous playback", modifier = Modifier.weight(1f))
+                    Switch(
+                        checked = allowSimultaneousPlayback,
+                        onCheckedChange = { allow ->
+                            if (!locked) scope.launch {
+                                app.engine.setAllowSimultaneousPlayback(allow)
+                                app.repository.setAllowSimultaneousPlayback(allow)
+                            }
+                        },
+                        enabled = !locked,
                     )
                 }
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp))
@@ -235,4 +273,19 @@ fun AppScaffold() {
 private sealed interface BoardEditor {
     data object Create : BoardEditor
     data class Rename(val id: String, val name: String) : BoardEditor
+}
+
+@Composable
+private fun DefaultFadeSlider(label: String, durationMs: Int, onCommit: (Int) -> Unit) {
+    var value by remember(durationMs) { mutableStateOf(durationMs.toFloat()) }
+    androidx.compose.foundation.layout.Column(modifier = Modifier.padding(horizontal = 28.dp, vertical = 4.dp)) {
+        Text("$label: " + if (value < 250f) "Off" else "%.1f s".format(java.util.Locale.US, value / 1000f))
+        Slider(
+            value = value,
+            onValueChange = { value = (it / 500f).toInt().coerceIn(0, 10) * 500f },
+            onValueChangeFinished = { onCommit(value.toInt()) },
+            valueRange = 0f..5000f,
+            steps = 9,
+        )
+    }
 }
