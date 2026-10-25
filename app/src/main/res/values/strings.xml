@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">508.dev Soundboard</string>
+    <string name="app_name">Soundboard NG</string>
 
     <!-- Main screen -->
     <string name="add_sound">Add sound</string>
@@ -48,31 +48,30 @@
     <string name="nav_licenses">Licenses</string>
 
     <!-- ===================================================================
-         About page — TEMPLATE. Everything below marked TODO is placeholder
-         copy; edit it here rather than in AboutScreen.kt.
+         About page strings for Soundboard NG.
          =================================================================== -->
     <string name="about_version">Version %1$s</string>
 
     <string name="about_app_title">About this app</string>
-    <string name="about_app_body">508 Soundboard is a simple, offline app that allows you to play any number of sound files at once, choosing the volume for each independently. The most common use case is for creating ambient spaces in tabletop gaming, or for creating soundscapes to help in sleep.</string>
+    <string name="about_app_body">Soundboard NG is an offline soundboard for theater, live events, and other productions. Organize sounds in multiple boards; play, pause, restart, and loop tracks; adjust volume and fades; and back up or restore your configuration and audio files.</string>
 
-    <string name="about_508_title">About 508.dev</string>
-    <string name="about_508_body">508.dev is a software engineering co-op with members in the USA, Taiwan, Japan, and Ethiopia. A co-op is a company that\'s owned by its workers, rather than shareholders or founders. 508.dev is available for consulting on interesting, ethical projects. If you\'re interested in discussing, or in joining, please visit our website, linked below.</string>
+    <string name="about_508_title">Original project</string>
+    <string name="about_508_body">Soundboard NG is a modified fork of Soundboard by 508.dev. The original project and its contributors retain credit for their work. This fork adds extended playback controls, multiple boards, configurable fades, and backup and restore features. It is not an official release of 508.dev.</string>
 
     <string name="about_link_repo">Source code</string>
-    <string name="about_link_repo_url">https://github.com/508-dev/soundboard</string>
+    <string name="about_link_repo_url">https://github.com/lattemacchiato/soundboard</string>
 
-    <string name="about_monetization_title">Monetization</string>
-    <string name="about_monetization_body">508.dev will never commoditize your humanity by selling your data, or using your data to advertise to you. Should this app monetize, it will likely do so by making a deal with some relevant product or service to display a simple, non-tracking ad within the app. For example, we may approach a sleep headphone vendor, show them our app download count, and negotiate for a monthly fee in return for showing a semi-prominent link to their product on the app. Or, we may gate features behind payment (unlikely). Or, we may offer online features in return for a fee, such as downloading premium sounds. If you prefer not to have any of these sorts of things in the app, we invite you to use the Github link above to modify the code and then compile your own APK that you sideload onto your phone.</string>
+    <string name="about_monetization_title">Open source</string>
+    <string name="about_monetization_body">Soundboard NG is free software under the GNU General Public License version 3. Source code and modification history are available in the project repository.</string>
 
     <string name="about_link_508">508.dev</string>
     <string name="about_link_508_url">https://508.dev</string>
 
     <string name="about_licenses_summary">Open-source licenses for this app and its dependencies</string>
-    <string name="about_license_line">Soundboard is free software released under the GNU General Public License v3.</string>
+    <string name="about_license_line">Soundboard NG is based on Soundboard by 508.dev and is licensed under the GNU General Public License v3.</string>
 
     <!-- Licenses page -->
-    <string name="licenses_app_title">Soundboard</string>
+    <string name="licenses_app_title">Soundboard NG</string>
     <string name="licenses_app_body">Released under the GNU General Public License, version 3. You may use, study, share, and modify this app, provided derivative works carry the same license.</string>
     <string name="licenses_gpl_link">Read the GPL v3</string>
     <string name="licenses_third_party_title">Third-party components</string>

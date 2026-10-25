@@ -1,0 +1,1 @@
+Initial Soundboard NG release with multiple boards, fades, playback controls and ZIP backups.

@@ -43,11 +43,11 @@ val releaseSigning: Map<String, String>? =
     }
 
 android {
-    namespace = "dev.co508.soundboard"
+    namespace = "de.lattemacchiato.soundboardng"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "dev.co508.soundboard"
+        applicationId = "de.lattemacchiato.soundboardng"
         // API 26 (Android 8.0) gives us notification channels and the modern
         // foreground-service APIs natively, with no compat branches. Matches
         // the sibling app (emotion-tracker); revisit only with a concrete
@@ -60,8 +60,8 @@ android {
         // major * 1000000 + minor * 1000 + patch. They have to stay plain
         // literals on their own lines because F-Droid's update bot regex-parses
         // both straight out of this file (see docs/deployment.md).
-        versionCode = 1003
-        versionName = "0.1.3"
+        versionCode = 1000000
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
