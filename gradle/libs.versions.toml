@@ -1,7 +1,7 @@
 [versions]
 # Keep in sync with docs/tooling.md. Bump deliberately, not opportunistically:
 # Renovate opens PRs for these on its own 7-day cooldown (see renovate.json).
-agp = "9.2.0"
+agp = "9.4.1"
 kotlin = "2.3.20"
 composeBom = "2026.08.00"
 coreKtx = "1.19.0"
