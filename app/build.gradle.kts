@@ -47,7 +47,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "dev.co508.soundboard"
+        applicationId = "de.lattemacchiato.soundboardng"
         // API 26 (Android 8.0) gives us notification channels and the modern
         // foreground-service APIs natively, with no compat branches. Matches
         // the sibling app (emotion-tracker); revisit only with a concrete
