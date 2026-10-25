@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "soundboard"
+rootProject.name = "soundboard-ng"
 include(":app")
