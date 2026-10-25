@@ -27,6 +27,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import dev.co508.soundboard.SoundboardApp
 import dev.co508.soundboard.data.TapBehavior
+import dev.co508.soundboard.data.ThemeMode
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.rememberCoroutineScope
@@ -60,6 +61,7 @@ fun AppScaffold() {
     val defaultFadeInMs by app.repository.defaultFadeInMs.collectAsState(initial = 0)
     val defaultFadeOutMs by app.repository.defaultFadeOutMs.collectAsState(initial = 0)
     val allowSimultaneousPlayback by app.repository.allowSimultaneousPlayback.collectAsState(initial = true)
+    val themeMode by app.repository.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
 
     LaunchedEffect(allowSimultaneousPlayback) {
         app.engine.setAllowSimultaneousPlayback(allowSimultaneousPlayback)
@@ -178,6 +180,26 @@ fun AppScaffold() {
                             }
                         },
                         enabled = !locked,
+                    )
+                }
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp))
+                Text(
+                    text = "Appearance",
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
+                )
+                listOf(
+                    ThemeMode.SYSTEM to "System",
+                    ThemeMode.LIGHT to "Light",
+                    ThemeMode.DARK to "Dark",
+                ).forEach { (mode, label) ->
+                    NavigationDrawerItem(
+                        label = { Text(label) },
+                        selected = themeMode == mode,
+                        onClick = {
+                            if (!locked) scope.launch { app.repository.setThemeMode(mode) }
+                        },
+                        modifier = Modifier.padding(horizontal = 12.dp),
                     )
                 }
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp))

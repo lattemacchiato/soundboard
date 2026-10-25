@@ -33,6 +33,11 @@ class SoundRepository(
     val defaultFadeInMs: Flow<Int> = store.data.map { it.defaultFadeInMs }
     val defaultFadeOutMs: Flow<Int> = store.data.map { it.defaultFadeOutMs }
     val allowSimultaneousPlayback: Flow<Boolean> = store.data.map { it.allowSimultaneousPlayback }
+    val themeMode: Flow<ThemeMode> = store.data.map { it.themeMode }
+
+    suspend fun setThemeMode(mode: ThemeMode) {
+        store.updateData { it.withThemeMode(mode) }
+    }
 
     suspend fun setAllowSimultaneousPlayback(allow: Boolean) {
         store.updateData { it.withAllowSimultaneousPlayback(allow) }
