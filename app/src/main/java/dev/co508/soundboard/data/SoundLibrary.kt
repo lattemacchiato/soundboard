@@ -14,6 +14,8 @@ data class SoundLibrary(
     val boards: List<SoundBoard> = listOf(SoundBoard()),
     val activeBoardId: String = DEFAULT_BOARD_ID,
 ) {
+    fun allSoundUris(): Set<String> = boards.flatMap { board -> board.sounds.map { it.uri } }.toSet()
+
     val sounds: List<Sound>
         get() = boards.firstOrNull { it.id == activeBoardId }?.sounds.orEmpty()
 
