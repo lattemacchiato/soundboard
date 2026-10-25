@@ -14,6 +14,9 @@ data class SoundLibrary(
     val boards: List<SoundBoard> = listOf(SoundBoard()),
     val activeBoardId: String = DEFAULT_BOARD_ID,
     val defaultTapBehavior: TapBehavior = TapBehavior.PAUSE_RESUME,
+    val defaultFadeInMs: Int = 0,
+    val defaultFadeOutMs: Int = 0,
+    val allowSimultaneousPlayback: Boolean = true,
 ) {
     fun allSoundUris(): Set<String> = boards.flatMap { board -> board.sounds.map { it.uri } }.toSet()
 
@@ -61,7 +64,7 @@ data class SoundLibrary(
         if (sounds.any { it.uri == uri }) {
             this
         } else {
-            withActiveSounds(sounds + Sound(id = id, uri = uri, name = name, tapBehavior = defaultTapBehavior))
+            withActiveSounds(sounds + Sound(id = id, uri = uri, name = name, tapBehavior = defaultTapBehavior, fadeInMs = defaultFadeInMs, fadeOutMs = defaultFadeOutMs))
         }
 
     /** Removes a sound from the board. The underlying file is never touched. */
@@ -96,6 +99,22 @@ data class SoundLibrary(
 
     fun withDefaultTapBehavior(behavior: TapBehavior): SoundLibrary =
         copy(defaultTapBehavior = behavior)
+
+    fun withFade(id: String, fadeIn: Boolean, durationMs: Int): SoundLibrary =
+        withActiveSounds(sounds.map { sound ->
+            if (sound.id != id) sound else if (fadeIn) {
+                sound.copy(fadeInMs = durationMs.coerceIn(0, 5000))
+            } else {
+                sound.copy(fadeOutMs = durationMs.coerceIn(0, 5000))
+            }
+        })
+
+    fun withDefaultFade(fadeIn: Boolean, durationMs: Int): SoundLibrary =
+        if (fadeIn) copy(defaultFadeInMs = durationMs.coerceIn(0, 5000))
+        else copy(defaultFadeOutMs = durationMs.coerceIn(0, 5000))
+
+    fun withAllowSimultaneousPlayback(allow: Boolean): SoundLibrary =
+        copy(allowSimultaneousPlayback = allow)
 
     fun find(id: String): Sound? = sounds.firstOrNull { it.id == id }
 

@@ -30,6 +30,22 @@ class SoundRepository(
     val activeBoardId: Flow<String> = store.data.map { it.activeBoardId }
     val defaultTapBehavior: Flow<TapBehavior> = store.data.map { it.defaultTapBehavior }
 
+    val defaultFadeInMs: Flow<Int> = store.data.map { it.defaultFadeInMs }
+    val defaultFadeOutMs: Flow<Int> = store.data.map { it.defaultFadeOutMs }
+    val allowSimultaneousPlayback: Flow<Boolean> = store.data.map { it.allowSimultaneousPlayback }
+
+    suspend fun setAllowSimultaneousPlayback(allow: Boolean) {
+        store.updateData { it.withAllowSimultaneousPlayback(allow) }
+    }
+
+    suspend fun setDefaultFade(fadeIn: Boolean, durationMs: Int) {
+        store.updateData { it.withDefaultFade(fadeIn, durationMs) }
+    }
+
+    suspend fun setFade(id: String, fadeIn: Boolean, durationMs: Int) {
+        store.updateData { it.withFade(id, fadeIn, durationMs) }
+    }
+
     suspend fun setDefaultTapBehavior(behavior: TapBehavior) {
         store.updateData { it.withDefaultTapBehavior(behavior) }
     }

@@ -49,9 +49,11 @@ class SoundboardViewModel(
 
     fun toggle(sound: Sound) {
         if (sound.tapBehavior == TapBehavior.STOP_RESTART &&
-            engine.statuses.value[sound.id] == PlaybackStatus.PLAYING
+            engine.statuses.value[sound.id] == PlaybackStatus.PLAYING && !engine.isFadingOut(sound.id)
         ) {
-            engine.release(sound.id) // Stops and resets to 0:00; next tap starts fresh.
+            engine.stop(sound) // Fade out, then reset to 0:00.
+        } else if (sound.tapBehavior == TapBehavior.STOP_RESTART && engine.isFadingOut(sound.id)) {
+            engine.restart(sound)
         } else {
             engine.toggle(sound)
         }
@@ -60,6 +62,11 @@ class SoundboardViewModel(
     fun setTapBehavior(id: String, behavior: TapBehavior) {
         if (locked.value) return
         viewModelScope.launch { if (!locked.value) repository.setTapBehavior(id, behavior) }
+    }
+
+    fun setFade(id: String, fadeIn: Boolean, durationMs: Int) {
+        if (locked.value) return
+        viewModelScope.launch { if (!locked.value) repository.setFade(id, fadeIn, durationMs) }
     }
 
     fun restart(sound: Sound) = engine.restart(sound)
