@@ -17,4 +17,7 @@ enum class Destination(
     Soundboard("soundboard", R.string.nav_soundboard, Icons.Filled.GraphicEq),
     About("about", R.string.nav_about, Icons.Filled.Info),
     Licenses("licenses", R.string.nav_licenses, Icons.AutoMirrored.Filled.LibraryBooks),
+    BoardSelector("board-selector", R.string.nav_soundboard, Icons.Filled.GraphicEq),
+    BoardManagement("board-management", R.string.nav_soundboard, Icons.Filled.GraphicEq),
+    Settings("settings", R.string.nav_soundboard, Icons.Filled.GraphicEq),
 }
