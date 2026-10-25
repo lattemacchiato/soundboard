@@ -1,0 +1,11 @@
+Categories:
+  - Multimedia
+License: GPL-3.0-only
+SourceCode: https://github.com/lattemacchiato/soundboard
+IssueTracker: https://github.com/lattemacchiato/soundboard/issues
+Changelog: https://github.com/lattemacchiato/soundboard/blob/HEAD/CHANGELOG.md
+AutoName: Soundboard NG
+RepoType: git
+Repo: https://github.com/lattemacchiato/soundboard.git
+# Draft only: add a verified build recipe and immutable release commit
+# when v1.0.0 is tagged. Do not submit this file yet.
