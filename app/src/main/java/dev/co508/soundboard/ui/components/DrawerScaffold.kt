@@ -36,6 +36,7 @@ fun DrawerScaffold(
     @StringRes titleRes: Int,
     onOpenDrawer: () -> Unit,
     modifier: Modifier = Modifier,
+    menuEnabled: Boolean = true,
     actions: @Composable RowScope.() -> Unit = {},
     floatingActionButton: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
@@ -46,7 +47,7 @@ fun DrawerScaffold(
             TopAppBar(
                 title = { Text(stringResource(titleRes)) },
                 navigationIcon = {
-                    IconButton(onClick = onOpenDrawer) {
+                    IconButton(onClick = onOpenDrawer, enabled = menuEnabled) {
                         Icon(
                             Icons.Filled.Menu,
                             contentDescription = stringResource(R.string.nav_menu_content_description),

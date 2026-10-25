@@ -18,6 +18,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.StopCircle
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -29,6 +31,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,6 +61,7 @@ fun SoundboardScreen(
 ) {
     val rows by viewModel.rows.collectAsStateWithLifecycle()
     val anyPlaying by viewModel.anyPlaying.collectAsStateWithLifecycle()
+    val locked by viewModel.locked.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     // Which sound each transient piece of UI is about, or null when closed.
@@ -71,6 +75,16 @@ fun SoundboardScreen(
     // long-press to mean two different things.
     var rearranging by remember { mutableStateOf(false) }
 
+    LaunchedEffect(locked) {
+        if (locked) {
+            rearranging = false
+            volumeTarget = null
+            optionsTarget = null
+            deleteTarget = null
+            renameTarget = null
+        }
+    }
+
     // ACTION_OPEN_DOCUMENT, not GET_CONTENT: only the former yields a URI whose
     // read permission can be persisted across reboots. The "multiple" variant
     // sets EXTRA_ALLOW_MULTIPLE so a whole folder of ambience can be added at
@@ -83,8 +97,9 @@ fun SoundboardScreen(
     DrawerScaffold(
         titleRes = if (rearranging) R.string.rearrange_title else R.string.app_name,
         onOpenDrawer = onOpenDrawer,
+        menuEnabled = !locked,
         actions = {
-            if (rows.isNotEmpty()) {
+            if (rows.isNotEmpty() && !locked) {
                 IconButton(onClick = { rearranging = !rearranging }) {
                     Icon(
                         imageVector = if (rearranging) Icons.Filled.Done else Icons.AutoMirrored.Filled.Sort,
@@ -93,6 +108,12 @@ fun SoundboardScreen(
                     )
                 }
             }
+            IconButton(onClick = { viewModel.setLocked(!locked) }) {
+                Icon(
+                    imageVector = if (locked) Icons.Filled.Lock else Icons.Filled.LockOpen,
+                    contentDescription = if (locked) "Unlock editing" else "Lock editing",
+                )
+            }
             if (anyPlaying) {
                 IconButton(onClick = viewModel::pauseAll) {
                     Icon(Icons.Filled.StopCircle, contentDescription = stringResource(R.string.stop_all))
@@ -100,7 +121,7 @@ fun SoundboardScreen(
             }
         },
         floatingActionButton = {
-            if (!rearranging) {
+            if (!rearranging && !locked) {
                 FloatingActionButton(onClick = { pickSounds.launch(arrayOf(AUDIO_MIME_TYPE)) }) {
                     Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.add_sound))
                 }
@@ -133,15 +154,16 @@ fun SoundboardScreen(
                             // running once the app is backgrounded.
                             if (!wasPlaying) PlaybackService.start(context)
                         },
-                        onVolumeClick = { volumeTarget = row.sound },
-                        onLongPress = { optionsTarget = row.sound },
+                        onVolumeClick = { if (!locked) volumeTarget = row.sound },
+                        onLongPress = { if (!locked) optionsTarget = row.sound },
+                        locked = locked,
                     )
                 }
             }
         }
     }
 
-    volumeTarget?.let { sound ->
+    if (!locked) volumeTarget?.let { sound ->
         VolumeDialDialog(
             sound = sound,
             onPreview = { viewModel.previewVolume(sound.id, it) },
@@ -150,7 +172,7 @@ fun SoundboardScreen(
         )
     }
 
-    optionsTarget?.let { sound ->
+    if (!locked) optionsTarget?.let { sound ->
         ModalBottomSheet(onDismissRequest = { optionsTarget = null }) {
             ListItem(headlineContent = { Text(sound.name) })
             ListItem(
@@ -178,7 +200,7 @@ fun SoundboardScreen(
         }
     }
 
-    renameTarget?.let { sound ->
+    if (!locked) renameTarget?.let { sound ->
         RenameDialog(
             sound = sound,
             onRename = { viewModel.rename(sound.id, it) },
@@ -186,7 +208,7 @@ fun SoundboardScreen(
         )
     }
 
-    deleteTarget?.let { sound ->
+    if (!locked) deleteTarget?.let { sound ->
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
             title = { Text(stringResource(R.string.delete_title, sound.name)) },

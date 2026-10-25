@@ -54,6 +54,7 @@ fun SoundRow(
     onVolumeClick: () -> Unit,
     onLongPress: () -> Unit,
     modifier: Modifier = Modifier,
+    locked: Boolean = false,
 ) {
     Card(
         shape = RoundedCornerShape(CORNER_RADIUS),
@@ -69,7 +70,7 @@ fun SoundRow(
         modifier =
             modifier
                 .fillMaxWidth()
-                .combinedClickable(onClick = onToggle, onLongClick = onLongPress),
+                .combinedClickable(onClick = onToggle, onLongClick = if (locked) null else onLongPress),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -101,6 +102,7 @@ fun SoundRow(
                 percent = row.sound.volumePercent,
                 soundName = row.sound.name,
                 onClick = onVolumeClick,
+                enabled = !locked,
             )
 
             FilledTonalIconButton(
@@ -134,6 +136,7 @@ private fun VolumePill(
     percent: Int,
     soundName: String,
     onClick: () -> Unit,
+    enabled: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val label = stringResource(R.string.volume_for, soundName)
@@ -148,7 +151,7 @@ private fun VolumePill(
                 // making the pill visually heavier than the play button.
                 .heightIn(min = 40.dp)
                 .clip(CircleShape)
-                .clickable(onClick = onClick)
+                .clickable(enabled = enabled, onClick = onClick)
                 .semantics { contentDescription = label },
     ) {
         Row(
