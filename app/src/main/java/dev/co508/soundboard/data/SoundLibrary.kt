@@ -11,8 +11,41 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class SoundLibrary(
-    val sounds: List<Sound> = emptyList(),
+    val boards: List<SoundBoard> = listOf(SoundBoard()),
+    val activeBoardId: String = DEFAULT_BOARD_ID,
 ) {
+    fun allSoundUris(): Set<String> = boards.flatMap { board -> board.sounds.map { it.uri } }.toSet()
+
+    val sounds: List<Sound>
+        get() = boards.firstOrNull { it.id == activeBoardId }?.sounds.orEmpty()
+
+    private fun withActiveSounds(updated: List<Sound>): SoundLibrary =
+        copy(boards = boards.map { if (it.id == activeBoardId) it.copy(sounds = updated) else it })
+
+    fun withBoard(id: String, name: String): SoundLibrary {
+        val trimmed = name.trim()
+        if (id.isBlank() || trimmed.isBlank() || boards.any { it.id == id }) return this
+        return copy(boards = boards + SoundBoard(id, trimmed))
+    }
+
+    fun selectedBoard(id: String): SoundLibrary =
+        if (boards.any { it.id == id }) copy(activeBoardId = id) else this
+
+    fun renamedBoard(id: String, name: String): SoundLibrary {
+        val trimmed = name.trim()
+        if (trimmed.isBlank()) return this
+        return copy(boards = boards.map { if (it.id == id) it.copy(name = trimmed) else it })
+    }
+
+    fun withoutBoard(id: String): SoundLibrary {
+        if (boards.size <= 1 || boards.none { it.id == id }) return this
+        val remaining = boards.filterNot { it.id == id }
+        return copy(
+            boards = remaining,
+            activeBoardId = if (activeBoardId == id) remaining.first().id else activeBoardId,
+        )
+    }
+
     /**
      * Appends a sound, ignoring the request when [uri] is already on the board.
      *
@@ -27,19 +60,18 @@ data class SoundLibrary(
         if (sounds.any { it.uri == uri }) {
             this
         } else {
-            copy(sounds = sounds + Sound(id = id, uri = uri, name = name))
+            withActiveSounds(sounds + Sound(id = id, uri = uri, name = name))
         }
 
     /** Removes a sound from the board. The underlying file is never touched. */
-    fun withoutSound(id: String): SoundLibrary = copy(sounds = sounds.filterNot { it.id == id })
+    fun withoutSound(id: String): SoundLibrary = withActiveSounds(sounds.filterNot { it.id == id })
 
     /** Sets one sound's relative volume, clamping to the valid percent range. */
     fun withVolume(
         id: String,
         percent: Int,
     ): SoundLibrary =
-        copy(
-            sounds =
+        withActiveSounds(
                 sounds.map { sound ->
                     if (sound.id == id) {
                         sound.copy(
@@ -70,7 +102,7 @@ data class SoundLibrary(
     ): SoundLibrary {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return this
-        return copy(sounds = sounds.map { if (it.id == id) it.copy(name = trimmed) else it })
+        return withActiveSounds(sounds.map { if (it.id == id) it.copy(name = trimmed) else it })
     }
 
     /**
@@ -87,7 +119,7 @@ data class SoundLibrary(
         if (fromIndex == toIndex || fromIndex !in sounds.indices || toIndex !in sounds.indices) return this
         val reordered = sounds.toMutableList()
         reordered.add(toIndex, reordered.removeAt(fromIndex))
-        return copy(sounds = reordered)
+        return withActiveSounds(reordered)
     }
 
     /**
@@ -104,6 +136,8 @@ data class SoundLibrary(
         val byId = sounds.associateBy { it.id }
         val known = order.mapNotNull { byId[it] }
         val remaining = sounds.filterNot { it.id in order }
-        return copy(sounds = known + remaining)
+        return withActiveSounds(known + remaining)
     }
+
+    companion object { const val DEFAULT_BOARD_ID = "default" }
 }

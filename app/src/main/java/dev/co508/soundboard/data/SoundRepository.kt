@@ -11,7 +11,6 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.core.DataStoreFactory
 import androidx.datastore.dataStoreFile
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.util.UUID
 
@@ -27,6 +26,35 @@ class SoundRepository(
     private val contentResolver: ContentResolver,
 ) {
     val sounds: Flow<List<Sound>> = store.data.map { it.sounds }
+    val boards: Flow<List<SoundBoard>> = store.data.map { it.boards }
+    val activeBoardId: Flow<String> = store.data.map { it.activeBoardId }
+
+    suspend fun createBoard(name: String): String? {
+        if (name.isBlank()) return null
+        val id = UUID.randomUUID().toString()
+        store.updateData { it.withBoard(id, name) }
+        return id
+    }
+
+    suspend fun selectBoard(id: String) {
+        store.updateData { it.selectedBoard(id) }
+    }
+
+    suspend fun renameBoard(id: String, name: String) {
+        store.updateData { it.renamedBoard(id, name) }
+    }
+
+    /** Deleting a board never deletes audio files. The final board is protected. */
+    suspend fun deleteBoard(id: String) {
+        val releasedUris = mutableSetOf<String>()
+        store.updateData { before ->
+            val after = before.withoutBoard(id)
+            releasedUris += before.allSoundUris() - after.allSoundUris()
+            after
+        }
+        releasedUris.forEach { releaseUriPermission(it.toUri()) }
+    }
+
 
     /**
      * Adds a picked document to the board, persisting read access to it.
@@ -73,11 +101,13 @@ class SoundRepository(
      * dialog the UI shows before calling this.
      */
     suspend fun remove(id: String) {
-        val removed = store.data.first().find(id) ?: return
-        store.updateData { it.withoutSound(id) }
-        // Only release once the row is gone, so a crash between the two leaves
-        // a usable sound rather than a row pointing at an unreadable URI.
-        releaseUriPermission(removed.uri.toUri())
+        val releasedUris = mutableSetOf<String>()
+        store.updateData { before ->
+            val after = before.withoutSound(id)
+            releasedUris += before.allSoundUris() - after.allSoundUris()
+            after
+        }
+        releasedUris.forEach { releaseUriPermission(it.toUri()) }
     }
 
     suspend fun setVolume(

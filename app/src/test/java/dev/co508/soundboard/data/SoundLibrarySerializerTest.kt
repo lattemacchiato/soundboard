@@ -2,6 +2,8 @@ package dev.co508.soundboard.data
 
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.fail
+import androidx.datastore.core.CorruptionException
 import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -25,9 +27,10 @@ class SoundLibrarySerializerTest {
     @Test
     fun `malformed json degrades to an empty board rather than failing to launch`() =
         runTest {
-            val restored = SoundLibrarySerializer.readFrom(ByteArrayInputStream("{ not json".toByteArray()))
-
-            assertEquals(SoundLibrary(), restored)
+            try {
+                SoundLibrarySerializer.readFrom(ByteArrayInputStream("{ not json".toByteArray()))
+                fail("Expected CorruptionException")
+            } catch (_: CorruptionException) {}
         }
 
     @Test
