@@ -1,18 +1,19 @@
 package dev.co508.soundboard.ui.components
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.ui.Alignment
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
@@ -22,12 +23,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import dev.co508.soundboard.SoundboardApp
-import dev.co508.soundboard.data.TapBehavior
-import dev.co508.soundboard.data.ThemeMode
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.rememberCoroutineScope
@@ -57,11 +55,7 @@ fun AppScaffold() {
     val locked by app.lockSettings.locked.collectAsState()
     val boards by app.repository.boards.collectAsState(initial = emptyList())
     val activeBoardId by app.repository.activeBoardId.collectAsState(initial = "default")
-    val defaultTapBehavior by app.repository.defaultTapBehavior.collectAsState(initial = TapBehavior.PAUSE_RESUME)
-    val defaultFadeInMs by app.repository.defaultFadeInMs.collectAsState(initial = 0)
-    val defaultFadeOutMs by app.repository.defaultFadeOutMs.collectAsState(initial = 0)
     val allowSimultaneousPlayback by app.repository.allowSimultaneousPlayback.collectAsState(initial = true)
-    val themeMode by app.repository.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
 
     LaunchedEffect(allowSimultaneousPlayback) {
         app.engine.setAllowSimultaneousPlayback(allowSimultaneousPlayback)
@@ -90,6 +84,26 @@ fun AppScaffold() {
             drawerState.close()
             editor = null
             deleteBoardId = null
+            if (navController.currentDestination?.route in listOf(
+                    Destination.BoardSelector.route,
+                    Destination.BoardManagement.route,
+                    Destination.Settings.route,
+                )) {
+                navController.navigate(Destination.Soundboard.route) {
+                    popUpTo(navController.graph.findStartDestination().id) { inclusive = false }
+                    launchSingleTop = true
+                }
+            }
+        }
+    }
+
+    fun openDestination(destination: Destination) {
+        if (locked && destination !in listOf(Destination.About, Destination.Licenses)) return
+        scope.launch { drawerState.close() }
+        navController.navigate(destination.route) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
         }
     }
 
@@ -105,118 +119,50 @@ fun AppScaffold() {
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp))
                 Text(
-                    text = "Soundboards",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 12.dp),
+                    text = "CURRENT BOARD",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 28.dp, top = 16.dp, bottom = 4.dp),
                 )
-                boards.forEach { board ->
-                    NavigationDrawerItem(
-                        label = { Text(board.name) },
-                        selected = activeBoardId == board.id,
-                        onClick = {
-                            if (!locked) scope.launch {
-                                switchToBoard(board.id)
-                                drawerState.close()
-                            }
-                        },
-                        modifier = Modifier.padding(horizontal = 12.dp),
-                    )
-                }
-                TextButton(
-                    onClick = { if (!locked) editor = BoardEditor.Create },
-                    modifier = Modifier.padding(horizontal = 20.dp),
-                ) { Text("+ New board") }
-                TextButton(
-                    onClick = { if (!locked) editor = BoardEditor.Rename(activeBoardId, boards.firstOrNull { it.id == activeBoardId }?.name.orEmpty()) },
-                    enabled = boards.isNotEmpty(),
-                    modifier = Modifier.padding(horizontal = 20.dp),
-                ) { Text("Rename current board") }
-                TextButton(
-                    onClick = { if (!locked && boards.size > 1) deleteBoardId = activeBoardId },
-                    enabled = boards.size > 1,
-                    modifier = Modifier.padding(horizontal = 20.dp),
-                ) { Text("Delete current board") }
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp))
-                Text(
-                    text = "Default tap behavior for new sounds",
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
+                NavigationDrawerItem(
+                    label = {
+                        Column {
+                            Text(boards.firstOrNull { it.id == activeBoardId }?.name ?: "No board selected")
+                            Text(
+                                "Choose board",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    },
+                    icon = { Icon(Icons.Filled.Dashboard, contentDescription = null) },
+                    badge = { Icon(Icons.Filled.ChevronRight, contentDescription = null) },
+                    selected = false,
+                    onClick = { openDestination(Destination.BoardSelector) },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                 )
-                listOf(
-                    TapBehavior.PAUSE_RESUME to "Pause / Resume",
-                    TapBehavior.STOP_RESTART to "Stop / Restart",
-                ).forEach { (behavior, label) ->
-                    NavigationDrawerItem(
-                        label = { Text(label) },
-                        selected = defaultTapBehavior == behavior,
-                        onClick = {
-                            if (!locked) scope.launch {
-                                app.repository.setDefaultTapBehavior(behavior)
-                            }
-                        },
-                        modifier = Modifier.padding(horizontal = 12.dp),
-                    )
-                }
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp))
-                DefaultFadeSlider("Default fade-in", defaultFadeInMs) { ms ->
-                    if (!locked) scope.launch { app.repository.setDefaultFade(true, ms) }
-                }
-                DefaultFadeSlider("Default fade-out", defaultFadeOutMs) { ms ->
-                    if (!locked) scope.launch { app.repository.setDefaultFade(false, ms) }
-                }
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("Allow simultaneous playback", modifier = Modifier.weight(1f))
-                    Switch(
-                        checked = allowSimultaneousPlayback,
-                        onCheckedChange = { allow ->
-                            if (!locked) scope.launch {
-                                app.engine.setAllowSimultaneousPlayback(allow)
-                                app.repository.setAllowSimultaneousPlayback(allow)
-                            }
-                        },
-                        enabled = !locked,
-                    )
-                }
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp))
-                Text(
-                    text = "Appearance",
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
+                NavigationDrawerItem(
+                    label = { Text("Manage boards") },
+                    icon = { Icon(Icons.Filled.FolderOpen, contentDescription = null) },
+                    selected = false,
+                    onClick = { openDestination(Destination.BoardManagement) },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                 )
-                listOf(
-                    ThemeMode.SYSTEM to "System",
-                    ThemeMode.LIGHT to "Light",
-                    ThemeMode.DARK to "Dark",
-                ).forEach { (mode, label) ->
-                    NavigationDrawerItem(
-                        label = { Text(label) },
-                        selected = themeMode == mode,
-                        onClick = {
-                            if (!locked) scope.launch { app.repository.setThemeMode(mode) }
-                        },
-                        modifier = Modifier.padding(horizontal = 12.dp),
-                    )
-                }
+                NavigationDrawerItem(
+                    label = { Text("Settings") },
+                    icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                    selected = false,
+                    onClick = { openDestination(Destination.Settings) },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp))
-                Destination.entries.forEach { destination ->
+                listOf(Destination.About, Destination.Licenses).forEach { destination ->
                     NavigationDrawerItem(
                         icon = { Icon(destination.icon, contentDescription = null) },
                         label = { Text(stringResource(destination.labelRes)) },
                         selected = currentRoute == destination.route,
                         onClick = {
-                            scope.launch { drawerState.close() }
-                            navController.navigate(destination.route) {
-                                // Keep a single entry per destination so the drawer
-                                // can't stack ten copies of About behind each other.
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
+                            openDestination(destination)
                         },
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                     )
@@ -227,7 +173,25 @@ fun AppScaffold() {
         AppNavHost(
             navController = navController,
             onOpenDrawer = { if (!locked) scope.launch { drawerState.open() } },
+            onSelectBoard = { id ->
+                scope.launch {
+                    switchToBoard(id)
+                    navController.popBackStack()
+                }
+            },
+            onCreateBoard = { if (!locked) editor = BoardEditor.Create },
+            onRenameBoard = { if (!locked) editor = BoardEditor.Rename(activeBoardId, boards.firstOrNull { it.id == activeBoardId }?.name.orEmpty()) },
+            onDeleteBoard = { if (!locked && boards.size > 1) deleteBoardId = activeBoardId },
+            onReturnToDrawer = {
+                if (navController.popBackStack()) {
+                    scope.launch { drawerState.open() }
+                }
+            },
         )
+    }
+
+    BackHandler(enabled = drawerState.isOpen) {
+        scope.launch { drawerState.close() }
     }
 
     if (!locked) editor?.let { current ->
@@ -255,7 +219,12 @@ fun AppScaffold() {
                                 when (current) {
                                     is BoardEditor.Create -> {
                                         val id = app.repository.createBoard(name)
-                                        if (id != null) switchToBoard(id)
+                                        if (id != null) {
+                                            switchToBoard(id)
+                                            if (navController.currentDestination?.route == Destination.BoardSelector.route) {
+                                                navController.popBackStack()
+                                            }
+                                        }
                                     }
                                     is BoardEditor.Rename -> app.repository.renameBoard(current.id, name)
                                 }
@@ -297,17 +266,3 @@ private sealed interface BoardEditor {
     data class Rename(val id: String, val name: String) : BoardEditor
 }
 
-@Composable
-private fun DefaultFadeSlider(label: String, durationMs: Int, onCommit: (Int) -> Unit) {
-    var value by remember(durationMs) { mutableStateOf(durationMs.toFloat()) }
-    androidx.compose.foundation.layout.Column(modifier = Modifier.padding(horizontal = 28.dp, vertical = 4.dp)) {
-        Text("$label: " + if (value < 250f) "Off" else "%.1f s".format(java.util.Locale.US, value / 1000f))
-        Slider(
-            value = value,
-            onValueChange = { value = (it / 500f).toInt().coerceIn(0, 10) * 500f },
-            onValueChangeFinished = { onCommit(value.toInt()) },
-            valueRange = 0f..5000f,
-            steps = 9,
-        )
-    }
-}
