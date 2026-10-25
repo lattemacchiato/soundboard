@@ -20,7 +20,7 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit) {
+fun SettingsScreen(onBack: () -> Unit, onOpenBackup: () -> Unit) {
     val app = LocalContext.current.applicationContext as SoundboardApp
     val scope = rememberCoroutineScope()
     val locked by app.lockSettings.locked.collectAsState()
@@ -127,6 +127,11 @@ fun SettingsScreen(onBack: () -> Unit) {
                         ) { Text(label, maxLines = 1) }
                     }
                 }
+            }
+            HorizontalDivider()
+            SettingsSectionTitle("Backup & Restore")
+            OutlinedButton(onClick = onOpenBackup, enabled = !locked) {
+                Text("Open Backup & Restore")
             }
         }
     }

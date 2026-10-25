@@ -20,4 +20,5 @@ enum class Destination(
     BoardSelector("board-selector", R.string.nav_soundboard, Icons.Filled.GraphicEq),
     BoardManagement("board-management", R.string.nav_soundboard, Icons.Filled.GraphicEq),
     Settings("settings", R.string.nav_soundboard, Icons.Filled.GraphicEq),
+    BackupRestore("backup-restore", R.string.nav_soundboard, Icons.Filled.GraphicEq),
 }

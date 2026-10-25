@@ -88,6 +88,7 @@ fun AppScaffold() {
                     Destination.BoardSelector.route,
                     Destination.BoardManagement.route,
                     Destination.Settings.route,
+                    Destination.BackupRestore.route,
                 )) {
                 navController.navigate(Destination.Soundboard.route) {
                     popUpTo(navController.graph.findStartDestination().id) { inclusive = false }
@@ -182,6 +183,7 @@ fun AppScaffold() {
             onCreateBoard = { if (!locked) editor = BoardEditor.Create },
             onRenameBoard = { if (!locked) editor = BoardEditor.Rename(activeBoardId, boards.firstOrNull { it.id == activeBoardId }?.name.orEmpty()) },
             onDeleteBoard = { if (!locked && boards.size > 1) deleteBoardId = activeBoardId },
+            onOpenBackup = { if (!locked) navController.navigate(Destination.BackupRestore.route) },
             onReturnToDrawer = {
                 if (navController.popBackStack()) {
                     scope.launch { drawerState.open() }
