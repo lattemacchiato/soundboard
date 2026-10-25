@@ -43,7 +43,7 @@ val releaseSigning: Map<String, String>? =
     }
 
 android {
-    namespace = "dev.co508.soundboard"
+    namespace = "de.lattemacchiato.soundboardng"
     compileSdk = 37
 
     defaultConfig {
