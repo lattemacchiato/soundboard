@@ -10,6 +10,10 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
+import dev.co508.soundboard.SoundboardApp
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -33,13 +37,21 @@ import kotlinx.coroutines.launch
 @Composable
 fun AppScaffold() {
     val navController = rememberNavController()
+    val app = LocalContext.current.applicationContext as SoundboardApp
+    val locked by app.lockSettings.locked.collectAsState()
+
     val drawerState = androidx.compose.material3.rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
+    LaunchedEffect(locked) {
+        if (locked) drawerState.close()
+    }
+
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = !locked,
         drawerContent = {
             ModalDrawerSheet {
                 Text(
@@ -71,7 +83,7 @@ fun AppScaffold() {
     ) {
         AppNavHost(
             navController = navController,
-            onOpenDrawer = { scope.launch { drawerState.open() } },
+            onOpenDrawer = { if (!locked) scope.launch { drawerState.open() } },
         )
     }
 }

@@ -3,6 +3,7 @@ package dev.co508.soundboard
 import android.app.Application
 import dev.co508.soundboard.audio.SoundboardEngine
 import dev.co508.soundboard.data.SoundRepository
+import dev.co508.soundboard.data.LockSettings
 
 /**
  * Process-wide holder for the engine and repository.
@@ -18,4 +19,6 @@ class SoundboardApp : Application() {
     val engine: SoundboardEngine by lazy { SoundboardEngine(this) }
 
     val repository: SoundRepository by lazy { SoundRepository.create(this) }
+
+    val lockSettings: LockSettings by lazy { LockSettings(this) }
 }
