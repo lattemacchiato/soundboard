@@ -13,6 +13,7 @@ import kotlinx.serialization.Serializable
 data class SoundLibrary(
     val boards: List<SoundBoard> = listOf(SoundBoard()),
     val activeBoardId: String = DEFAULT_BOARD_ID,
+    val defaultTapBehavior: TapBehavior = TapBehavior.PAUSE_RESUME,
 ) {
     fun allSoundUris(): Set<String> = boards.flatMap { board -> board.sounds.map { it.uri } }.toSet()
 
@@ -60,7 +61,7 @@ data class SoundLibrary(
         if (sounds.any { it.uri == uri }) {
             this
         } else {
-            withActiveSounds(sounds + Sound(id = id, uri = uri, name = name))
+            withActiveSounds(sounds + Sound(id = id, uri = uri, name = name, tapBehavior = defaultTapBehavior))
         }
 
     /** Removes a sound from the board. The underlying file is never touched. */
@@ -89,6 +90,12 @@ data class SoundLibrary(
 
     fun withLoop(id: String, loop: Boolean): SoundLibrary =
         withActiveSounds(sounds.map { if (it.id == id) it.copy(loop = loop) else it })
+
+    fun withTapBehavior(id: String, behavior: TapBehavior): SoundLibrary =
+        withActiveSounds(sounds.map { if (it.id == id) it.copy(tapBehavior = behavior) else it })
+
+    fun withDefaultTapBehavior(behavior: TapBehavior): SoundLibrary =
+        copy(defaultTapBehavior = behavior)
 
     fun find(id: String): Sound? = sounds.firstOrNull { it.id == id }
 

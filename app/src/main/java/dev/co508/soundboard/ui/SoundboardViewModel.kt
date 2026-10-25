@@ -9,6 +9,7 @@ import dev.co508.soundboard.audio.PlaybackStatus
 import dev.co508.soundboard.audio.SoundboardEngine
 import dev.co508.soundboard.data.Sound
 import dev.co508.soundboard.data.SoundRepository
+import dev.co508.soundboard.data.TapBehavior
 import dev.co508.soundboard.data.LockSettings
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -46,7 +47,20 @@ class SoundboardViewModel(
             .map { statuses -> statuses.any { it.value == PlaybackStatus.PLAYING } }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), false)
 
-    fun toggle(sound: Sound) = engine.toggle(sound)
+    fun toggle(sound: Sound) {
+        if (sound.tapBehavior == TapBehavior.STOP_RESTART &&
+            engine.statuses.value[sound.id] == PlaybackStatus.PLAYING
+        ) {
+            engine.release(sound.id) // Stops and resets to 0:00; next tap starts fresh.
+        } else {
+            engine.toggle(sound)
+        }
+    }
+
+    fun setTapBehavior(id: String, behavior: TapBehavior) {
+        if (locked.value) return
+        viewModelScope.launch { if (!locked.value) repository.setTapBehavior(id, behavior) }
+    }
 
     fun restart(sound: Sound) = engine.restart(sound)
 
