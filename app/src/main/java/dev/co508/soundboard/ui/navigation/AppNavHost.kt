@@ -9,6 +9,7 @@ import dev.co508.soundboard.SoundboardApp
 import dev.co508.soundboard.ui.components.BoardSelectorScreen
 import dev.co508.soundboard.ui.components.BoardManagementScreen
 import dev.co508.soundboard.ui.components.SettingsScreen
+import dev.co508.soundboard.ui.components.BackupRestoreScreen
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -35,6 +36,7 @@ fun AppNavHost(
     onRenameBoard: () -> Unit,
     onDeleteBoard: () -> Unit,
     onReturnToDrawer: () -> Unit,
+    onOpenBackup: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val app = LocalContext.current.applicationContext as SoundboardApp
@@ -74,9 +76,12 @@ fun AppNavHost(
                 onBack = onReturnToDrawer,
             )
         }
+        composable(Destination.BackupRestore.route) {
+            BackupRestoreScreen(onBack = { navController.popBackStack() })
+        }
         composable(Destination.Settings.route) {
             BackHandler(onBack = onReturnToDrawer)
-            SettingsScreen(onBack = onReturnToDrawer)
+            SettingsScreen(onBack = onReturnToDrawer, onOpenBackup = onOpenBackup)
         }
     }
 }

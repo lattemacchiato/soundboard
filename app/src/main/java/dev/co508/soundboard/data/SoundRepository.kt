@@ -12,6 +12,7 @@ import androidx.datastore.core.DataStoreFactory
 import androidx.datastore.dataStoreFile
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
 import java.util.UUID
 
 /**
@@ -25,6 +26,13 @@ class SoundRepository(
     private val store: DataStore<SoundLibrary>,
     private val contentResolver: ContentResolver,
 ) {
+    suspend fun snapshot(): SoundLibrary = store.data.first()
+
+    /** Single atomic DataStore update; no URI permissions are released on import. */
+    suspend fun restore(library: SoundLibrary) {
+        store.updateData { library }
+    }
+
     val sounds: Flow<List<Sound>> = store.data.map { it.sounds }
     val boards: Flow<List<SoundBoard>> = store.data.map { it.boards }
     val activeBoardId: Flow<String> = store.data.map { it.activeBoardId }
