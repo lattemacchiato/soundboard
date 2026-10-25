@@ -17,6 +17,7 @@ data class SoundLibrary(
     val defaultFadeInMs: Int = 0,
     val defaultFadeOutMs: Int = 0,
     val allowSimultaneousPlayback: Boolean = true,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
 ) {
     fun allSoundUris(): Set<String> = boards.flatMap { board -> board.sounds.map { it.uri } }.toSet()
 
@@ -115,6 +116,8 @@ data class SoundLibrary(
 
     fun withAllowSimultaneousPlayback(allow: Boolean): SoundLibrary =
         copy(allowSimultaneousPlayback = allow)
+
+    fun withThemeMode(mode: ThemeMode): SoundLibrary = copy(themeMode = mode)
 
     fun find(id: String): Sound? = sounds.firstOrNull { it.id == id }
 
