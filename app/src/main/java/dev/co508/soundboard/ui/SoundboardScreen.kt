@@ -64,6 +64,12 @@ fun SoundboardScreen(
     val locked by viewModel.locked.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
+    // added for soudboard title
+    val app = context.applicationContext as dev.co508.soundboard.SoundboardApp
+    val boards by app.repository.boards.collectAsStateWithLifecycle(initialValue = emptyList())
+    val activeBoardId by app.repository.activeBoardId.collectAsStateWithLifecycle(initialValue = "default")
+    val activeBoardName = boards.firstOrNull { it.id == activeBoardId }?.name
+
     // Which sound each transient piece of UI is about, or null when closed.
     var volumeTarget by remember { mutableStateOf<Sound?>(null) }
     var optionsTarget by remember { mutableStateOf<Sound?>(null) }
@@ -96,6 +102,7 @@ fun SoundboardScreen(
 
     DrawerScaffold(
         titleRes = if (rearranging) R.string.rearrange_title else R.string.app_name,
+        title = if (rearranging) null else activeBoardName,
         onOpenDrawer = onOpenDrawer,
         menuEnabled = !locked,
         actions = {

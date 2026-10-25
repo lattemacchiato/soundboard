@@ -34,6 +34,7 @@ import dev.co508.soundboard.R
 @Composable
 fun DrawerScaffold(
     @StringRes titleRes: Int,
+    title: String? = null,
     onOpenDrawer: () -> Unit,
     modifier: Modifier = Modifier,
     menuEnabled: Boolean = true,
@@ -45,7 +46,7 @@ fun DrawerScaffold(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(titleRes)) },
+                title = { Text(title ?: stringResource(titleRes)) },
                 navigationIcon = {
                     IconButton(onClick = onOpenDrawer, enabled = menuEnabled) {
                         Icon(
