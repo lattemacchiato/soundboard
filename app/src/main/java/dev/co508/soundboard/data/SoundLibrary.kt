@@ -87,6 +87,9 @@ data class SoundLibrary(
                 },
         )
 
+    fun withLoop(id: String, loop: Boolean): SoundLibrary =
+        withActiveSounds(sounds.map { if (it.id == id) it.copy(loop = loop) else it })
+
     fun find(id: String): Sound? = sounds.firstOrNull { it.id == id }
 
     /**

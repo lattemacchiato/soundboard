@@ -110,6 +110,10 @@ class SoundRepository(
         releasedUris.forEach { releaseUriPermission(it.toUri()) }
     }
 
+    suspend fun setLoop(id: String, loop: Boolean) {
+        store.updateData { it.withLoop(id, loop) }
+    }
+
     suspend fun setVolume(
         id: String,
         percent: Int,

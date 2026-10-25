@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalIconButton
@@ -51,6 +52,7 @@ import dev.co508.soundboard.ui.SoundRowState
 fun SoundRow(
     row: SoundRowState,
     onToggle: () -> Unit,
+    onRestart: () -> Unit,
     onVolumeClick: () -> Unit,
     onLongPress: () -> Unit,
     modifier: Modifier = Modifier,
@@ -104,6 +106,16 @@ fun SoundRow(
                 onClick = onVolumeClick,
                 enabled = !locked,
             )
+
+            FilledTonalIconButton(
+                onClick = onRestart,
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ),
+                modifier = Modifier.size(48.dp),
+            ) {
+                Icon(Icons.Filled.Replay, contentDescription = "Restart ${row.sound.name}")
+            }
 
             FilledTonalIconButton(
                 onClick = onToggle,

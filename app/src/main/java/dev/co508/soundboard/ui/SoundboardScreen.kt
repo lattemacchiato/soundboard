@@ -28,6 +28,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -161,6 +162,10 @@ fun SoundboardScreen(
                             // running once the app is backgrounded.
                             if (!wasPlaying) PlaybackService.start(context)
                         },
+                        onRestart = {
+                            viewModel.restart(row.sound)
+                            PlaybackService.start(context)
+                        },
                         onVolumeClick = { if (!locked) volumeTarget = row.sound },
                         onLongPress = { if (!locked) optionsTarget = row.sound },
                         locked = locked,
@@ -181,7 +186,18 @@ fun SoundboardScreen(
 
     if (!locked) optionsTarget?.let { sound ->
         ModalBottomSheet(onDismissRequest = { optionsTarget = null }) {
+            val currentSound = rows.firstOrNull { it.sound.id == sound.id }?.sound ?: sound
             ListItem(headlineContent = { Text(sound.name) })
+            ListItem(
+                headlineContent = { Text("Loop") },
+                supportingContent = { Text(if (currentSound.loop) "Repeat continuously" else "Play once") },
+                trailingContent = {
+                    Switch(
+                        checked = currentSound.loop,
+                        onCheckedChange = { viewModel.setLoop(sound.id, it) },
+                    )
+                },
+            )
             ListItem(
                 headlineContent = { Text(stringResource(R.string.edit)) },
                 leadingContent = { Icon(Icons.Filled.Edit, contentDescription = null) },

@@ -48,6 +48,14 @@ class SoundboardViewModel(
 
     fun toggle(sound: Sound) = engine.toggle(sound)
 
+    fun restart(sound: Sound) = engine.restart(sound)
+
+    fun setLoop(id: String, loop: Boolean) {
+        if (locked.value) return
+        engine.setLoop(id, loop)
+        viewModelScope.launch { if (!locked.value) repository.setLoop(id, loop) }
+    }
+
     fun pauseAll() = engine.pauseAll()
 
     fun add(uris: List<Uri>) {

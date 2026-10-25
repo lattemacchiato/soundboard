@@ -19,6 +19,7 @@ data class Sound(
     val uri: String,
     val name: String,
     val volumePercent: Int = DEFAULT_VOLUME_PERCENT,
+    val loop: Boolean = true,
 ) {
     /**
      * Linear amplitude multiplier for ExoPlayer's `volume` property.

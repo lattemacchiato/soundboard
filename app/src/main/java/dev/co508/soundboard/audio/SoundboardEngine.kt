@@ -67,10 +67,32 @@ class SoundboardEngine(
         val player = players.getOrPut(sound.id) { buildPlayer(sound) }
         gains[sound.id] = sound.gain
         player.volume = sound.gain * duckFactor
+        player.repeatMode = if (sound.loop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
         if (!focus.request()) return
         pausedByFocusLoss.remove(sound.id)
         player.play()
         setStatus(sound.id, PlaybackStatus.PLAYING)
+    }
+
+    /** Start from the beginning even if this sound is currently playing or paused. */
+    fun restart(sound: Sound) {
+        if (_statuses.value[sound.id] == PlaybackStatus.UNAVAILABLE) {
+            players.remove(sound.id)?.release()
+        }
+        val player = players.getOrPut(sound.id) { buildPlayer(sound) }
+        gains[sound.id] = sound.gain
+        player.volume = sound.gain * duckFactor
+        player.repeatMode = if (sound.loop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+        if (!focus.request()) return
+        pausedByFocusLoss.remove(sound.id)
+        player.seekTo(0L)
+        player.play()
+        setStatus(sound.id, PlaybackStatus.PLAYING)
+    }
+
+    /** Apply a changed loop setting without restarting a running player. */
+    fun setLoop(id: String, loop: Boolean) {
+        players[id]?.repeatMode = if (loop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
     }
 
     fun pause(id: String) {
@@ -141,10 +163,23 @@ class SoundboardEngine(
                     // one request for the whole engine. See AudioFocusHolder.
                     false,
                 )
-                repeatMode = Player.REPEAT_MODE_ONE
+                repeatMode = if (sound.loop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
                 setMediaItem(MediaItem.fromUri(sound.uri.toUri()))
                 addListener(
                     object : Player.Listener {
+                        override fun onPlaybackStateChanged(playbackState: Int) {
+                            if (playbackState == Player.STATE_ENDED &&
+                                _statuses.value[sound.id] != PlaybackStatus.UNAVAILABLE
+                            ) {
+                                // One-shot reached its end: reset so the next tap starts at zero.
+                                pause()
+                                seekTo(0L)
+                                pausedByFocusLoss.remove(sound.id)
+                                setStatus(sound.id, PlaybackStatus.IDLE)
+                                abandonFocusIfSilent()
+                            }
+                        }
+
                         override fun onPlayerError(error: PlaybackException) {
                             setStatus(sound.id, PlaybackStatus.UNAVAILABLE)
                             abandonFocusIfSilent()
