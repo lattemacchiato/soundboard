@@ -77,7 +77,10 @@ class SoundboardViewModel(
         viewModelScope.launch { if (!locked.value) repository.setLoop(id, loop) }
     }
 
-    fun pauseAll() = engine.pauseAll()
+    /** Stop every playing or paused sound immediately, resetting playback state. */
+    fun stopAll() {
+        engine.statuses.value.keys.toList().forEach(engine::release)
+    }
 
     fun add(uris: List<Uri>) {
         if (uris.isEmpty() || locked.value) return

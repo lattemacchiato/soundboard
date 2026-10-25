@@ -128,7 +128,7 @@ fun SoundboardScreen(
                 )
             }
             if (anyPlaying) {
-                IconButton(onClick = viewModel::pauseAll) {
+                IconButton(onClick = viewModel::stopAll) {
                     Icon(Icons.Filled.StopCircle, contentDescription = stringResource(R.string.stop_all))
                 }
             }

@@ -1,6 +1,10 @@
 package dev.co508.soundboard.ui.components
 
+import android.app.Activity
+import android.content.Intent
 import androidx.activity.compose.BackHandler
+import dev.co508.soundboard.audio.PlaybackService
+import dev.co508.soundboard.audio.PlaybackStatus
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
@@ -51,7 +55,9 @@ import kotlinx.coroutines.flow.first
 @Composable
 fun AppScaffold() {
     val navController = rememberNavController()
-    val app = LocalContext.current.applicationContext as SoundboardApp
+    val context = LocalContext.current
+    val activity = context as? Activity
+    val app = context.applicationContext as SoundboardApp
     val locked by app.lockSettings.locked.collectAsState()
     val boards by app.repository.boards.collectAsState(initial = emptyList())
     val activeBoardId by app.repository.activeBoardId.collectAsState(initial = "default")
@@ -62,6 +68,16 @@ fun AppScaffold() {
     }
     var editor by remember { mutableStateOf<BoardEditor?>(null) }
     var deleteBoardId by remember { mutableStateOf<String?>(null) }
+    var confirmExit by remember { mutableStateOf(false) }
+    val playbackStatuses by app.engine.statuses.collectAsState()
+
+    fun exitAndStop() {
+        // release() cancels fades and releases paused AND playing players.
+        // Do not call releaseAll(): it permanently disables this Application engine.
+        app.engine.statuses.value.keys.toList().forEach(app.engine::release)
+        context.stopService(Intent(context, PlaybackService::class.java))
+        activity?.finish()
+    }
 
     // Stop and release only the old board's players. releaseAll() would make
     // the shared engine unusable for the next board.
@@ -184,6 +200,13 @@ fun AppScaffold() {
             onRenameBoard = { if (!locked) editor = BoardEditor.Rename(activeBoardId, boards.firstOrNull { it.id == activeBoardId }?.name.orEmpty()) },
             onDeleteBoard = { if (!locked && boards.size > 1) deleteBoardId = activeBoardId },
             onOpenBackup = { if (!locked) navController.navigate(Destination.BackupRestore.route) },
+            onExitRequested = {
+                if (playbackStatuses.values.any { it == PlaybackStatus.PLAYING || it == PlaybackStatus.PAUSED }) {
+                    confirmExit = true
+                } else {
+                    exitAndStop()
+                }
+            },
             onReturnToDrawer = {
                 if (navController.popBackStack()) {
                     scope.launch { drawerState.open() }
@@ -194,6 +217,23 @@ fun AppScaffold() {
 
     BackHandler(enabled = drawerState.isOpen) {
         scope.launch { drawerState.close() }
+    }
+
+    if (confirmExit) {
+        AlertDialog(
+            onDismissRequest = { confirmExit = false },
+            title = { Text("Exit Soundboard?") },
+            text = { Text("One or more sounds are playing or paused. Exiting will stop all playback.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmExit = false
+                    exitAndStop()
+                }) { Text("Exit & Stop All") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmExit = false }) { Text("Cancel") }
+            },
+        )
     }
 
     if (!locked) editor?.let { current ->

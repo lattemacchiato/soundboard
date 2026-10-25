@@ -37,6 +37,7 @@ fun AppNavHost(
     onDeleteBoard: () -> Unit,
     onReturnToDrawer: () -> Unit,
     onOpenBackup: () -> Unit,
+    onExitRequested: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val app = LocalContext.current.applicationContext as SoundboardApp
@@ -48,7 +49,10 @@ fun AppNavHost(
         startDestination = Destination.Soundboard.route,
         modifier = modifier,
     ) {
-        composable(Destination.Soundboard.route) { SoundboardScreen(onOpenDrawer = onOpenDrawer) }
+        composable(Destination.Soundboard.route) {
+            BackHandler(onBack = onExitRequested)
+            SoundboardScreen(onOpenDrawer = onOpenDrawer)
+        }
         composable(Destination.About.route) {
             BackHandler(onBack = onReturnToDrawer)
             AboutScreen(
