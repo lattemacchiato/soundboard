@@ -20,6 +20,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import dev.co508.soundboard.SoundboardApp
+import dev.co508.soundboard.data.TapBehavior
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.rememberCoroutineScope
@@ -49,6 +50,7 @@ fun AppScaffold() {
     val locked by app.lockSettings.locked.collectAsState()
     val boards by app.repository.boards.collectAsState(initial = emptyList())
     val activeBoardId by app.repository.activeBoardId.collectAsState(initial = "default")
+    val defaultTapBehavior by app.repository.defaultTapBehavior.collectAsState(initial = TapBehavior.PAUSE_RESUME)
     var editor by remember { mutableStateOf<BoardEditor?>(null) }
     var deleteBoardId by remember { mutableStateOf<String?>(null) }
 
@@ -119,6 +121,27 @@ fun AppScaffold() {
                     enabled = boards.size > 1,
                     modifier = Modifier.padding(horizontal = 20.dp),
                 ) { Text("Delete current board") }
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp))
+                Text(
+                    text = "Default tap behavior for new sounds",
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
+                )
+                listOf(
+                    TapBehavior.PAUSE_RESUME to "Pause / Resume",
+                    TapBehavior.STOP_RESTART to "Stop / Restart",
+                ).forEach { (behavior, label) ->
+                    NavigationDrawerItem(
+                        label = { Text(label) },
+                        selected = defaultTapBehavior == behavior,
+                        onClick = {
+                            if (!locked) scope.launch {
+                                app.repository.setDefaultTapBehavior(behavior)
+                            }
+                        },
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                    )
+                }
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp))
                 Destination.entries.forEach { destination ->
                     NavigationDrawerItem(

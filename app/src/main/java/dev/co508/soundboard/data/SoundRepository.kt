@@ -28,6 +28,15 @@ class SoundRepository(
     val sounds: Flow<List<Sound>> = store.data.map { it.sounds }
     val boards: Flow<List<SoundBoard>> = store.data.map { it.boards }
     val activeBoardId: Flow<String> = store.data.map { it.activeBoardId }
+    val defaultTapBehavior: Flow<TapBehavior> = store.data.map { it.defaultTapBehavior }
+
+    suspend fun setDefaultTapBehavior(behavior: TapBehavior) {
+        store.updateData { it.withDefaultTapBehavior(behavior) }
+    }
+
+    suspend fun setTapBehavior(id: String, behavior: TapBehavior) {
+        store.updateData { it.withTapBehavior(id, behavior) }
+    }
 
     suspend fun createBoard(name: String): String? {
         if (name.isBlank()) return null

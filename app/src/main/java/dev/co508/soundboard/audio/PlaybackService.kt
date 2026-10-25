@@ -36,22 +36,13 @@ class PlaybackService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val engine by lazy { (application as SoundboardApp).engine }
 
+    private var monitoringStarted = false
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
         createChannel()
-        scope.launch {
-            engine.statuses
-                .map { statuses -> statuses.count { it.value == PlaybackStatus.PLAYING } }
-                .collect { playingCount ->
-                    if (playingCount == 0) {
-                        stopSelf()
-                    } else {
-                        notificationManager.notify(NOTIFICATION_ID, buildNotification(playingCount))
-                    }
-                }
-        }
     }
 
     override fun onStartCommand(
@@ -59,13 +50,10 @@ class PlaybackService : Service() {
         flags: Int,
         startId: Int,
     ): Int {
-        if (intent?.action == ACTION_STOP_ALL) {
-            engine.pauseAll()
-        }
+        // First fulfill Android's foreground-service requirement.
+        val playingCount =
+            engine.statuses.value.count { it.value == PlaybackStatus.PLAYING }
 
-        // Android gives us ~5s from startForegroundService() to get here, so
-        // promote first and let the collector above refine the text after.
-        val playingCount = engine.statuses.value.count { it.value == PlaybackStatus.PLAYING }
         ServiceCompat.startForeground(
             this,
             NOTIFICATION_ID,
@@ -77,7 +65,32 @@ class PlaybackService : Service() {
             },
         )
 
-        if (playingCount == 0) stopSelf()
+        // Only start monitoring after foreground promotion.
+        if (!monitoringStarted) {
+            monitoringStarted = true
+
+            scope.launch {
+                engine.statuses
+                    .map { statuses ->
+                        statuses.count { it.value == PlaybackStatus.PLAYING }
+                    }
+                    .collect { count ->
+                        if (count == 0) {
+                            stopSelf()
+                        } else {
+                            notificationManager.notify(
+                                NOTIFICATION_ID,
+                                buildNotification(count),
+                            )
+                        }
+                    }
+            }
+        }
+
+        if (intent?.action == ACTION_STOP_ALL) {
+            engine.pauseAll()
+        }
+
         return START_NOT_STICKY
     }
 

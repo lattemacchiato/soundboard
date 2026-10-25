@@ -48,11 +48,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.co508.soundboard.R
 import dev.co508.soundboard.audio.PlaybackService
 import dev.co508.soundboard.data.Sound
+import dev.co508.soundboard.data.TapBehavior
 import dev.co508.soundboard.ui.components.DrawerScaffold
 import dev.co508.soundboard.ui.components.RenameDialog
 import dev.co508.soundboard.ui.components.ReorderableSoundList
 import dev.co508.soundboard.ui.components.SoundRow
 import dev.co508.soundboard.ui.components.VolumeDialDialog
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -198,6 +202,41 @@ fun SoundboardScreen(
                     )
                 },
             )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            ) {
+                Text(
+                    text = "Tap behavior",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+
+                SingleChoiceSegmentedButtonRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                ) {
+                    val behaviors = listOf(
+                        TapBehavior.PAUSE_RESUME to "Pause / Resume",
+                        TapBehavior.STOP_RESTART to "Stop / Restart",
+                    )
+
+                    behaviors.forEachIndexed { index, (behavior, label) ->
+                        SegmentedButton(
+                            shape = SegmentedButtonDefaults.itemShape(
+                                index = index,
+                                count = behaviors.size,
+                            ),
+                            selected = currentSound.tapBehavior == behavior,
+                            onClick = {
+                                viewModel.setTapBehavior(sound.id, behavior)
+                            },
+                            label = { Text(label) },
+                        )
+                    }
+                }
+            }
             ListItem(
                 headlineContent = { Text(stringResource(R.string.edit)) },
                 leadingContent = { Icon(Icons.Filled.Edit, contentDescription = null) },
