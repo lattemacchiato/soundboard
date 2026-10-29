@@ -1,6 +1,5 @@
 package de.lattemacchiato.soundboardng.ui.components
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -29,7 +28,6 @@ fun SettingsScreen(onBack: () -> Unit, onOpenBackup: () -> Unit) {
     val fadeOut by app.repository.defaultFadeOutMs.collectAsState(initial = 0)
     val simultaneous by app.repository.allowSimultaneousPlayback.collectAsState(initial = true)
     val theme by app.repository.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
-    var editingFadeIn by remember { mutableStateOf<Boolean?>(null) }
     val defaultRowHeightLevel by app.repository.defaultRowHeightLevel
         .collectAsState(initial = 1)
     var rowHeightSlider by remember {
@@ -103,10 +101,24 @@ fun SettingsScreen(onBack: () -> Unit, onOpenBackup: () -> Unit) {
 
             HorizontalDivider()
             SettingsSectionTitle("Default fade for new sounds")
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                FadeSettingCard("Fade-in", fadeIn, !locked, Modifier.weight(1f)) { editingFadeIn = true }
-                FadeSettingCard("Fade-out", fadeOut, !locked, Modifier.weight(1f)) { editingFadeIn = false }
-            }
+
+            FadeSettingSlider(
+                label = "Fade-in",
+                durationMs = fadeIn,
+                enabled = !locked,
+                onDurationChange = { duration ->
+                    scope.launch { app.repository.setDefaultFade(true, duration) }
+                },
+            )
+
+            FadeSettingSlider(
+                label = "Fade-out",
+                durationMs = fadeOut,
+                enabled = !locked,
+                onDurationChange = { duration ->
+                    scope.launch { app.repository.setDefaultFade(false, duration) }
+                },
+            )
 
             HorizontalDivider()
             SettingsSectionTitle("Appearance")
@@ -174,19 +186,6 @@ fun SettingsScreen(onBack: () -> Unit, onOpenBackup: () -> Unit) {
             }
         }
     }
-
-    val fadeBeingEdited = editingFadeIn
-    if (fadeBeingEdited != null && !locked) {
-        FadeSettingDialog(
-            label = if (fadeBeingEdited) "Fade-in" else "Fade-out",
-            durationMs = if (fadeBeingEdited) fadeIn else fadeOut,
-            onDismiss = { editingFadeIn = null },
-            onConfirm = { duration ->
-                editingFadeIn = null
-                scope.launch { app.repository.setDefaultFade(fadeBeingEdited, duration) }
-            },
-        )
-    }
 }
 
 @Composable
@@ -199,50 +198,40 @@ private fun SettingsSectionTitle(title: String) {
 }
 
 @Composable
-private fun FadeSettingCard(
+private fun FadeSettingSlider(
     label: String,
     durationMs: Int,
     enabled: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
+    onDurationChange: (Int) -> Unit,
 ) {
-    OutlinedCard(
-        modifier = modifier,
-        onClick = onClick,
-        enabled = enabled,
-    ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(label, style = MaterialTheme.typography.labelMedium)
-            Text(formatFade(durationMs), style = MaterialTheme.typography.titleMedium)
-        }
+    var sliderValue by remember {
+        mutableFloatStateOf(durationMs.toFloat())
     }
-}
 
-@Composable
-private fun FadeSettingDialog(
-    label: String,
-    durationMs: Int,
-    onDismiss: () -> Unit,
-    onConfirm: (Int) -> Unit,
-) {
-    var value by remember(durationMs) { mutableFloatStateOf(durationMs.coerceIn(0, 5000).toFloat()) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(label) },
-        text = {
-            Column {
-                Text(formatFade(value.toInt()), style = MaterialTheme.typography.titleMedium)
-                Slider(
-                    value = value,
-                    onValueChange = { value = (it / 500f).toInt().coerceIn(0, 10) * 500f },
-                    valueRange = 0f..5000f,
-                    steps = 9,
-                )
-            }
-        },
-        confirmButton = { TextButton(onClick = { onConfirm(value.toInt()) }) { Text("OK") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
+    LaunchedEffect(durationMs) {
+        sliderValue = durationMs.toFloat()
+    }
+
+    Column {
+        Text(
+            text = "$label: ${formatFade(sliderValue.toInt())}",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+
+        Slider(
+            value = sliderValue,
+            onValueChange = { sliderValue = it },
+            onValueChangeFinished = {
+                val duration = ((sliderValue / 500f).toInt() * 500)
+                    .coerceIn(0, 5000)
+                onDurationChange(duration)
+            },
+            valueRange = 0f..5000f,
+            steps = 9,
+            enabled = enabled,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }
 
 private fun formatFade(durationMs: Int): String =
