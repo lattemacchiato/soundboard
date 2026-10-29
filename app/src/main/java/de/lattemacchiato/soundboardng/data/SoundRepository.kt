@@ -38,6 +38,8 @@ class SoundRepository(
     val activeBoardId: Flow<String> = store.data.map { it.activeBoardId }
     val defaultTapBehavior: Flow<TapBehavior> = store.data.map { it.defaultTapBehavior }
 
+    val defaultRowHeightLevel: Flow<Int> = store.data.map { it.defaultRowHeightLevel }
+
     val defaultFadeInMs: Flow<Int> = store.data.map { it.defaultFadeInMs }
     val defaultFadeOutMs: Flow<Int> = store.data.map { it.defaultFadeOutMs }
     val allowSimultaneousPlayback: Flow<Boolean> = store.data.map { it.allowSimultaneousPlayback }
@@ -53,6 +55,16 @@ class SoundRepository(
 
     suspend fun setDefaultFade(fadeIn: Boolean, durationMs: Int) {
         store.updateData { it.withDefaultFade(fadeIn, durationMs) }
+    }
+
+    /** Updates the global default row height level. */
+    suspend fun setDefaultRowHeightLevel(level: Int) {
+        store.updateData { it.withDefaultRowHeightLevel(level) }
+    }
+
+    /** Updates a board-specific level; null means inherit global default. */
+    suspend fun setBoardRowHeightLevel(boardId: String, level: Int?) {
+        store.updateData { it.withBoardRowHeightLevel(boardId, level) }
     }
 
     suspend fun setFade(id: String, fadeIn: Boolean, durationMs: Int) {

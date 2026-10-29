@@ -74,6 +74,21 @@ fun SoundboardScreen(
     val app = context.applicationContext as de.lattemacchiato.soundboardng.SoundboardApp
     val boards by app.repository.boards.collectAsStateWithLifecycle(initialValue = emptyList())
     val activeBoardId by app.repository.activeBoardId.collectAsStateWithLifecycle(initialValue = "default")
+
+    val defaultRowHeightLevel by app.repository.defaultRowHeightLevel
+        .collectAsStateWithLifecycle(initialValue = 1)
+
+    val boardRowHeightLevel = boards.firstOrNull { it.id == activeBoardId }?.rowHeightLevel
+    val effectiveRowHeightLevel = (boardRowHeightLevel ?: defaultRowHeightLevel).coerceIn(1, 5)
+
+    val rowHeight = when (effectiveRowHeightLevel) {
+        1 -> 64.dp
+        2 -> 80.dp
+        3 -> 96.dp
+        4 -> 120.dp
+        else -> 144.dp
+    }
+
     val activeBoardName = boards.firstOrNull { it.id == activeBoardId }?.name
 
     // Which sound each transient piece of UI is about, or null when closed.
@@ -174,6 +189,7 @@ fun SoundboardScreen(
                         onVolumeClick = { if (!locked) volumeTarget = row.sound },
                         onLongPress = { if (!locked) optionsTarget = row.sound },
                         locked = locked,
+                        minHeight = rowHeight,
                     )
                 }
             }

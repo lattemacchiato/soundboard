@@ -10,6 +10,7 @@ import de.lattemacchiato.soundboardng.ui.components.BoardSelectorScreen
 import de.lattemacchiato.soundboardng.ui.components.BoardManagementScreen
 import de.lattemacchiato.soundboardng.ui.components.SettingsScreen
 import de.lattemacchiato.soundboardng.ui.components.BackupRestoreScreen
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -17,6 +18,7 @@ import androidx.navigation.compose.composable
 import de.lattemacchiato.soundboardng.ui.SoundboardScreen
 import de.lattemacchiato.soundboardng.ui.about.AboutScreen
 import de.lattemacchiato.soundboardng.ui.about.LicensesScreen
+import kotlinx.coroutines.launch
 
 /**
  * Three flat destinations, each owning its own `Scaffold`.
@@ -43,6 +45,12 @@ fun AppNavHost(
     val app = LocalContext.current.applicationContext as SoundboardApp
     val boards by app.repository.boards.collectAsState(initial = emptyList())
     val activeBoardId by app.repository.activeBoardId.collectAsState(initial = "default")
+
+    val defaultRowHeightLevel by app.repository.defaultRowHeightLevel
+        .collectAsState(initial = 1)
+
+    val scope = rememberCoroutineScope()
+
     val locked by app.lockSettings.locked.collectAsState()
     NavHost(
         navController = navController,
@@ -78,6 +86,14 @@ fun AppNavHost(
                 onRename = onRenameBoard,
                 onDelete = onDeleteBoard,
                 onBack = onReturnToDrawer,
+                defaultRowHeightLevel = defaultRowHeightLevel,
+                onRowHeightLevelChange = { level ->
+                    if (!locked) {
+                        scope.launch {
+                            app.repository.setBoardRowHeightLevel(activeBoardId, level)
+                        }
+                    }
+                },
             )
         }
         composable(Destination.BackupRestore.route) {

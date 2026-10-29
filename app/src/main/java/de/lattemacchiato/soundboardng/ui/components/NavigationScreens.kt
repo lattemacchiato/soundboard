@@ -7,7 +7,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import de.lattemacchiato.soundboardng.data.SoundBoard
@@ -56,6 +58,8 @@ fun BoardManagementScreen(
     boards: List<SoundBoard>,
     activeBoardId: String,
     locked: Boolean,
+    defaultRowHeightLevel: Int,
+    onRowHeightLevelChange: (Int?) -> Unit,
     onCreate: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
@@ -80,12 +84,72 @@ fun BoardManagementScreen(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(onClick = onRename, enabled = !locked && boards.isNotEmpty()) {
-                    Text("Rename…")
+                    Text("Rename")
                 }
                 OutlinedButton(onClick = onDelete, enabled = !locked && boards.size > 1) {
-                    Text("Delete…")
+                    Text("Delete")
                 }
             }
+
+            val activeBoard = boards.firstOrNull { it.id == activeBoardId }
+            val customLevel = activeBoard?.rowHeightLevel
+            val useGlobal = customLevel == null
+
+            var sliderLevel by remember(activeBoardId) {
+                mutableFloatStateOf((customLevel ?: defaultRowHeightLevel).toFloat())
+            }
+
+            LaunchedEffect(customLevel, defaultRowHeightLevel) {
+                sliderLevel = (customLevel ?: defaultRowHeightLevel).toFloat()
+            }
+
+            Text(
+                "Sound button size",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Use global default", modifier = Modifier.weight(1f))
+
+                Switch(
+                    checked = useGlobal,
+                    enabled = !locked,
+                    onCheckedChange = { enabled ->
+                        if (enabled) {
+                            onRowHeightLevelChange(null)
+                        } else {
+                            onRowHeightLevelChange(defaultRowHeightLevel)
+                        }
+                    },
+                )
+            }
+
+            Text(
+                text = if (useGlobal) {
+                    "Global level: $defaultRowHeightLevel of 5"
+                } else {
+                    "Custom level: ${sliderLevel.toInt().coerceIn(1, 5)} of 5"
+                },
+                style = MaterialTheme.typography.labelMedium,
+            )
+
+            Slider(
+                value = sliderLevel,
+                onValueChange = { sliderLevel = it },
+                onValueChangeFinished = {
+                    if (!useGlobal && !locked) {
+                        onRowHeightLevelChange(sliderLevel.toInt().coerceIn(1, 5))
+                    }
+                },
+                valueRange = 1f..5f,
+                steps = 3,
+                enabled = !locked && !useGlobal,
+                modifier = Modifier.fillMaxWidth(),
+            )
 
             HorizontalDivider()
 

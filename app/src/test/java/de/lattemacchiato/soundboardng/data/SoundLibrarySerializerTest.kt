@@ -48,4 +48,51 @@ class SoundLibrarySerializerTest {
         runTest {
             assertEquals(SoundLibrary(), SoundLibrarySerializer.readFrom(ByteArrayInputStream(ByteArray(0))))
         }
+    @Test
+    fun `legacy json without row height settings uses defaults`() =
+        runTest {
+            val json = """
+            {
+                "boards": [
+                    {
+                        "id": "default",
+                        "name": "Default",
+                        "sounds": []
+                    }
+                ],
+                "activeBoardId": "default"
+            }
+        """.trimIndent()
+
+            val restored = SoundLibrarySerializer.readFrom(
+                ByteArrayInputStream(json.toByteArray())
+            )
+
+            assertEquals(1, restored.defaultRowHeightLevel)
+            assertEquals(null, restored.boards.first().rowHeightLevel)
+            assertEquals(1, restored.effectiveRowHeightLevel("default"))
+        }
+
+    @Test
+    fun `row height settings survive serialization round trip`() =
+        runTest {
+            val original = SoundLibrary()
+                .withDefaultRowHeightLevel(3)
+                .withBoard("board2", "Second board")
+                .withBoardRowHeightLevel("board2", 5)
+
+            val bytes = ByteArrayOutputStream().also {
+                SoundLibrarySerializer.writeTo(original, it)
+            }.toByteArray()
+
+            val restored = SoundLibrarySerializer.readFrom(
+                ByteArrayInputStream(bytes)
+            )
+
+            assertEquals(original, restored)
+            assertEquals(3, restored.defaultRowHeightLevel)
+            assertEquals(3, restored.effectiveRowHeightLevel("default"))
+            assertEquals(5, restored.effectiveRowHeightLevel("board2"))
+            assertEquals(null, restored.boards.first().rowHeightLevel)
+        }
 }

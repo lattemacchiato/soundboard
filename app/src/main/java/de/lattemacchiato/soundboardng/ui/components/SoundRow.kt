@@ -36,8 +36,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import de.lattemacchiato.soundboardng.R
 import de.lattemacchiato.soundboardng.ui.SoundRowState
+
 
 /**
  * One full-width rounded row: name on the left, volume percent and a
@@ -57,6 +59,7 @@ fun SoundRow(
     onLongPress: () -> Unit,
     modifier: Modifier = Modifier,
     locked: Boolean = false,
+    minHeight: Dp = 64.dp,
 ) {
     Card(
         shape = RoundedCornerShape(CORNER_RADIUS),
@@ -72,12 +75,16 @@ fun SoundRow(
         modifier =
             modifier
                 .fillMaxWidth()
+                .heightIn(min = minHeight)
                 .combinedClickable(onClick = onToggle, onLongClick = if (locked) null else onLongPress),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = minHeight)
+                .padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(

@@ -30,6 +30,15 @@ fun SettingsScreen(onBack: () -> Unit, onOpenBackup: () -> Unit) {
     val simultaneous by app.repository.allowSimultaneousPlayback.collectAsState(initial = true)
     val theme by app.repository.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
     var editingFadeIn by remember { mutableStateOf<Boolean?>(null) }
+    val defaultRowHeightLevel by app.repository.defaultRowHeightLevel
+        .collectAsState(initial = 1)
+    var rowHeightSlider by remember {
+        mutableFloatStateOf(defaultRowHeightLevel.toFloat())
+    }
+
+    LaunchedEffect(defaultRowHeightLevel) {
+        rowHeightSlider = defaultRowHeightLevel.toFloat()
+    }
 
     Scaffold(topBar = {
         TopAppBar(title = { Text("Settings") }, navigationIcon = {
@@ -128,6 +137,36 @@ fun SettingsScreen(onBack: () -> Unit, onOpenBackup: () -> Unit) {
                     }
                 }
             }
+
+            Text(
+                text = "Default sound button size",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+
+            Text(
+                text = "Level ${rowHeightSlider.toInt().coerceIn(1, 5)} of 5",
+                style = MaterialTheme.typography.labelMedium,
+            )
+
+            Slider(
+                value = rowHeightSlider,
+                onValueChange = { value ->
+                    rowHeightSlider = value
+                },
+                onValueChangeFinished = {
+                    if (!locked) {
+                        val level = rowHeightSlider.toInt().coerceIn(1, 5)
+                        scope.launch {
+                            app.repository.setDefaultRowHeightLevel(level)
+                        }
+                    }
+                },
+                valueRange = 1f..5f,
+                steps = 3,
+                enabled = !locked,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
             HorizontalDivider()
             SettingsSectionTitle("Backup & Restore")
             OutlinedButton(onClick = onOpenBackup, enabled = !locked) {

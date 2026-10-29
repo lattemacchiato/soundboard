@@ -18,6 +18,7 @@ data class SoundLibrary(
     val defaultFadeOutMs: Int = 0,
     val allowSimultaneousPlayback: Boolean = true,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val defaultRowHeightLevel: Int = 1,
 ) {
     fun allSoundUris(): Set<String> = boards.flatMap { board -> board.sounds.map { it.uri } }.toSet()
 
@@ -116,6 +117,28 @@ data class SoundLibrary(
 
     fun withAllowSimultaneousPlayback(allow: Boolean): SoundLibrary =
         copy(allowSimultaneousPlayback = allow)
+
+    /** Sets the global default row height level (1..5). */
+    fun withDefaultRowHeightLevel(level: Int): SoundLibrary =
+        copy(defaultRowHeightLevel = level.coerceIn(1, 5))
+
+    /** Sets a board-specific level, or null to inherit the global default. */
+    fun withBoardRowHeightLevel(boardId: String, level: Int?): SoundLibrary =
+        copy(
+            boards = boards.map { board ->
+                if (board.id == boardId) {
+                    board.copy(rowHeightLevel = level?.coerceIn(1, 5))
+                } else {
+                    board
+                }
+            },
+        )
+
+    /** Resolves the effective level for a board, including inheritance. */
+    fun effectiveRowHeightLevel(boardId: String): Int {
+        val boardLevel = boards.firstOrNull { it.id == boardId }?.rowHeightLevel
+        return (boardLevel ?: defaultRowHeightLevel).coerceIn(1, 5)
+    }
 
     fun withThemeMode(mode: ThemeMode): SoundLibrary = copy(themeMode = mode)
 
