@@ -5,7 +5,19 @@ SourceCode: https://github.com/lattemacchiato/soundboard
 IssueTracker: https://github.com/lattemacchiato/soundboard/issues
 Changelog: https://github.com/lattemacchiato/soundboard/blob/HEAD/CHANGELOG.md
 AutoName: Soundboard NG
+
 RepoType: git
 Repo: https://github.com/lattemacchiato/soundboard.git
-# Draft only: add a verified build recipe and immutable release commit
-# when v1.0.0 is tagged. Do not submit this file yet.
+
+Builds:
+  - versionName: 1.0.0
+    versionCode: 1000000
+    commit: 5a1a85ad5d45bcb7c660802e62590ff580774167
+    subdir: app
+    gradle:
+      - yes
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^v[0-9]+\.[0-9]+\.[0-9]+$
+CurrentVersion: 1.0.0
+CurrentVersionCode: 1000000
