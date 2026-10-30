@@ -30,6 +30,8 @@ fun SettingsScreen(onBack: () -> Unit, onOpenBackup: () -> Unit) {
     val theme by app.repository.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
     val defaultRowHeightLevel by app.repository.defaultRowHeightLevel
         .collectAsState(initial = 1)
+    val defaultLoop by app.repository.defaultLoop.collectAsState(initial = true)
+
     var rowHeightSlider by remember {
         mutableFloatStateOf(defaultRowHeightLevel.toFloat())
     }
@@ -51,6 +53,8 @@ fun SettingsScreen(onBack: () -> Unit, onOpenBackup: () -> Unit) {
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+
+
             SettingsSectionTitle("Default tap behavior for new sounds")
             var tapMenuExpanded by remember { mutableStateOf(false) }
             ExposedDropdownMenuBox(
@@ -89,6 +93,32 @@ fun SettingsScreen(onBack: () -> Unit, onOpenBackup: () -> Unit) {
 
             HorizontalDivider()
             SettingsSectionTitle("Playback")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Loop new sounds by default",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        text = "Applies only to newly added sounds",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+
+                Switch(
+                    checked = defaultLoop,
+                    onCheckedChange = { enabled ->
+                        scope.launch {
+                            app.repository.setDefaultLoop(enabled)
+                        }
+                    },
+                    enabled = !locked,
+                )
+            }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text("Allow simultaneous playback", modifier = Modifier.weight(1f))
                 Switch(checked = simultaneous, enabled = !locked, onCheckedChange = { allow ->

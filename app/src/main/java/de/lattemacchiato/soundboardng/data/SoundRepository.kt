@@ -45,6 +45,9 @@ class SoundRepository(
     val allowSimultaneousPlayback: Flow<Boolean> = store.data.map { it.allowSimultaneousPlayback }
     val themeMode: Flow<ThemeMode> = store.data.map { it.themeMode }
 
+    val defaultLoop: Flow<Boolean> =
+        store.data.map { it.defaultLoop }
+
     suspend fun setThemeMode(mode: ThemeMode) {
         store.updateData { it.withThemeMode(mode) }
     }
@@ -60,6 +63,10 @@ class SoundRepository(
     /** Updates the global default row height level. */
     suspend fun setDefaultRowHeightLevel(level: Int) {
         store.updateData { it.withDefaultRowHeightLevel(level) }
+    }
+
+    suspend fun setDefaultLoop(loop: Boolean) {
+        store.updateData { it.withDefaultLoop(loop) }
     }
 
     /** Updates a board-specific level; null means inherit global default. */

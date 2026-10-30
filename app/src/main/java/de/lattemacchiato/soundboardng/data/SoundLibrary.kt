@@ -19,6 +19,7 @@ data class SoundLibrary(
     val allowSimultaneousPlayback: Boolean = true,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val defaultRowHeightLevel: Int = 1,
+    val defaultLoop: Boolean = true,
 ) {
     fun allSoundUris(): Set<String> = boards.flatMap { board -> board.sounds.map { it.uri } }.toSet()
 
@@ -66,7 +67,17 @@ data class SoundLibrary(
         if (sounds.any { it.uri == uri }) {
             this
         } else {
-            withActiveSounds(sounds + Sound(id = id, uri = uri, name = name, tapBehavior = defaultTapBehavior, fadeInMs = defaultFadeInMs, fadeOutMs = defaultFadeOutMs))
+            withActiveSounds(
+                sounds + Sound(
+                    id = id,
+                    uri = uri,
+                    name = name,
+                    loop = defaultLoop,
+                    tapBehavior = defaultTapBehavior,
+                    fadeInMs = defaultFadeInMs,
+                    fadeOutMs = defaultFadeOutMs,
+                )
+            )
         }
 
     /** Removes a sound from the board. The underlying file is never touched. */
@@ -114,6 +125,9 @@ data class SoundLibrary(
     fun withDefaultFade(fadeIn: Boolean, durationMs: Int): SoundLibrary =
         if (fadeIn) copy(defaultFadeInMs = durationMs.coerceIn(0, 5000))
         else copy(defaultFadeOutMs = durationMs.coerceIn(0, 5000))
+
+    fun withDefaultLoop(loop: Boolean): SoundLibrary =
+        copy(defaultLoop = loop)
 
     fun withAllowSimultaneousPlayback(allow: Boolean): SoundLibrary =
         copy(allowSimultaneousPlayback = allow)

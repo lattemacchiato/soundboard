@@ -95,4 +95,37 @@ class SoundLibrarySerializerTest {
             assertEquals(5, restored.effectiveRowHeightLevel("board2"))
             assertEquals(null, restored.boards.first().rowHeightLevel)
         }
+
+    @Test
+    fun `legacy json without default loop uses enabled default`() =
+        runTest {
+            val json = """{"sounds":[]}"""
+
+            val restored = SoundLibrarySerializer.readFrom(
+                ByteArrayInputStream(json.toByteArray())
+            )
+
+            assertEquals(true, restored.defaultLoop)
+        }
+
+    @Test
+    fun `default loop survives serialization round trip`() =
+        runTest {
+            val original = SoundLibrary()
+                .withDefaultLoop(false)
+                .withSound("a", "content://a", "Sound A")
+
+            val bytes = ByteArrayOutputStream().also {
+                SoundLibrarySerializer.writeTo(original, it)
+            }.toByteArray()
+
+            val restored = SoundLibrarySerializer.readFrom(
+                ByteArrayInputStream(bytes)
+            )
+
+            assertEquals(original, restored)
+            assertEquals(false, restored.defaultLoop)
+            assertEquals(false, restored.sounds.first().loop)
+        }
+
 }
