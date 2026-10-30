@@ -96,19 +96,23 @@ fun SoundRow(
 
                 val fadeInMs = row.sound.fadeInMs
                 val fadeOutMs = row.sound.fadeOutMs
+                val loop = row.sound.loop
 
-                if (fadeInMs > 0 || fadeOutMs > 0) {
-                    val fadeLabel = buildList {
-                        if (fadeInMs > 0) {
-                            add("↑ ${formatFadeDuration(fadeInMs)}")
-                        }
-                        if (fadeOutMs > 0) {
-                            add("↓ ${formatFadeDuration(fadeOutMs)}")
-                        }
-                    }.joinToString(" · ")
+                val playbackLabel = buildList {
+                    if (loop) {
+                        add("↻")
+                    }
+                    if (fadeInMs > 0) {
+                        add("↑ ${formatFadeDuration(fadeInMs)}")
+                    }
+                    if (fadeOutMs > 0) {
+                        add("↓ ${formatFadeDuration(fadeOutMs)}")
+                    }
+                }.joinToString(" · ")
 
+                if (playbackLabel.isNotEmpty()) {
                     Text(
-                        text = fadeLabel,
+                        text = playbackLabel,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
