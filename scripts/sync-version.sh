@@ -21,7 +21,10 @@
 # --print exists so nothing else has to reimplement the formula above. Callers
 # do: eval "$(scripts/sync-version.sh --print)".
 set -euo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+# Default to the repository containing this script.
+# RELEASE_WORKTREE allows a trusted copy to operate on another checkout.
+script_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+cd "${RELEASE_WORKTREE:-$script_root}"
 
 mode=${1:-write}
 case $mode in
