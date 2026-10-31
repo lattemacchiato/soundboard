@@ -7,10 +7,10 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import de.lattemacchiato.soundboardng.audio.PlaybackStatus
 import de.lattemacchiato.soundboardng.audio.SoundboardEngine
+import de.lattemacchiato.soundboardng.data.LockSettings
 import de.lattemacchiato.soundboardng.data.Sound
 import de.lattemacchiato.soundboardng.data.SoundRepository
 import de.lattemacchiato.soundboardng.data.TapBehavior
-import de.lattemacchiato.soundboardng.data.LockSettings
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -49,7 +49,8 @@ class SoundboardViewModel(
 
     fun toggle(sound: Sound) {
         if (sound.tapBehavior == TapBehavior.STOP_RESTART &&
-            engine.statuses.value[sound.id] == PlaybackStatus.PLAYING && !engine.isFadingOut(sound.id)
+            engine.statuses.value[sound.id] == PlaybackStatus.PLAYING &&
+            !engine.isFadingOut(sound.id)
         ) {
             engine.stop(sound) // Fade out, then reset to 0:00.
         } else if (sound.tapBehavior == TapBehavior.STOP_RESTART && engine.isFadingOut(sound.id)) {
@@ -59,19 +60,29 @@ class SoundboardViewModel(
         }
     }
 
-    fun setTapBehavior(id: String, behavior: TapBehavior) {
+    fun setTapBehavior(
+        id: String,
+        behavior: TapBehavior,
+    ) {
         if (locked.value) return
         viewModelScope.launch { if (!locked.value) repository.setTapBehavior(id, behavior) }
     }
 
-    fun setFade(id: String, fadeIn: Boolean, durationMs: Int) {
+    fun setFade(
+        id: String,
+        fadeIn: Boolean,
+        durationMs: Int,
+    ) {
         if (locked.value) return
         viewModelScope.launch { if (!locked.value) repository.setFade(id, fadeIn, durationMs) }
     }
 
     fun restart(sound: Sound) = engine.restart(sound)
 
-    fun setLoop(id: String, loop: Boolean) {
+    fun setLoop(
+        id: String,
+        loop: Boolean,
+    ) {
         if (locked.value) return
         engine.setLoop(id, loop)
         viewModelScope.launch { if (!locked.value) repository.setLoop(id, loop) }
@@ -79,7 +90,9 @@ class SoundboardViewModel(
 
     /** Stop every playing or paused sound immediately, resetting playback state. */
     fun stopAll() {
-        engine.statuses.value.keys.toList().forEach(engine::release)
+        engine.statuses.value.keys
+            .toList()
+            .forEach(engine::release)
     }
 
     fun add(uris: List<Uri>) {

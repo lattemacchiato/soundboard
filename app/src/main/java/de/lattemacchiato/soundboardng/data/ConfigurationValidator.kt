@@ -2,7 +2,6 @@
 package de.lattemacchiato.soundboardng.data
 
 internal object ConfigurationValidator {
-
     fun validate(library: SoundLibrary) {
         // Validate library structure
         require(library.boards.isNotEmpty() && library.boards.size <= 1000) {
@@ -26,7 +25,7 @@ internal object ConfigurationValidator {
         // Validate global settings
         require(
             library.defaultFadeInMs in 0..5000 &&
-                library.defaultFadeOutMs in 0..5000
+                library.defaultFadeOutMs in 0..5000,
         ) {
             "Invalid default fade settings"
         }
@@ -58,7 +57,7 @@ internal object ConfigurationValidator {
 
                 require(
                     sound.uri.startsWith("content://") ||
-                        sound.uri.startsWith("file://")
+                        sound.uri.startsWith("file://"),
                 ) {
                     "Invalid sound URI"
                 }
@@ -69,7 +68,7 @@ internal object ConfigurationValidator {
 
                 require(
                     sound.fadeInMs in 0..5000 &&
-                        sound.fadeOutMs in 0..5000
+                        sound.fadeOutMs in 0..5000,
                 ) {
                     "Invalid sound fade settings"
                 }

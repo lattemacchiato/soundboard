@@ -1,6 +1,12 @@
 package de.lattemacchiato.soundboardng.ui.components
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -8,18 +14,36 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import de.lattemacchiato.soundboardng.data.SoundBoard
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun NavigationPage(title: String, onBack: () -> Unit, content: @Composable (PaddingValues) -> Unit) {
+private fun NavigationPage(
+    title: String,
+    onBack: () -> Unit,
+    content: @Composable (PaddingValues) -> Unit,
+) {
     Scaffold(topBar = {
         TopAppBar(title = { Text(title) }, navigationIcon = {
             IconButton(onClick = onBack) {
@@ -51,9 +75,10 @@ fun BoardSelectorScreen(
             }
             item {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     Button(
@@ -176,11 +201,12 @@ fun BoardManagementScreen(
             }
 
             Text(
-                text = if (useGlobal) {
-                    "Global level: $defaultRowHeightLevel of 5"
-                } else {
-                    "Custom level: ${sliderLevel.toInt().coerceIn(1, 5)} of 5"
-                },
+                text =
+                    if (useGlobal) {
+                        "Global level: $defaultRowHeightLevel of 5"
+                    } else {
+                        "Custom level: ${sliderLevel.toInt().coerceIn(1, 5)} of 5"
+                    },
                 style = MaterialTheme.typography.labelMedium,
             )
 
@@ -197,7 +223,6 @@ fun BoardManagementScreen(
                 enabled = !locked && !useGlobal,
                 modifier = Modifier.fillMaxWidth(),
             )
-
         }
     }
 }

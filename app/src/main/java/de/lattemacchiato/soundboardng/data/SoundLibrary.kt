@@ -29,16 +29,21 @@ data class SoundLibrary(
     private fun withActiveSounds(updated: List<Sound>): SoundLibrary =
         copy(boards = boards.map { if (it.id == activeBoardId) it.copy(sounds = updated) else it })
 
-    fun withBoard(id: String, name: String): SoundLibrary {
+    fun withBoard(
+        id: String,
+        name: String,
+    ): SoundLibrary {
         val trimmed = name.trim()
         if (id.isBlank() || trimmed.isBlank() || boards.any { it.id == id }) return this
         return copy(boards = boards + SoundBoard(id, trimmed))
     }
 
-    fun selectedBoard(id: String): SoundLibrary =
-        if (boards.any { it.id == id }) copy(activeBoardId = id) else this
+    fun selectedBoard(id: String): SoundLibrary = if (boards.any { it.id == id }) copy(activeBoardId = id) else this
 
-    fun renamedBoard(id: String, name: String): SoundLibrary {
+    fun renamedBoard(
+        id: String,
+        name: String,
+    ): SoundLibrary {
         val trimmed = name.trim()
         if (trimmed.isBlank()) return this
         return copy(boards = boards.map { if (it.id == id) it.copy(name = trimmed) else it })
@@ -68,15 +73,16 @@ data class SoundLibrary(
             this
         } else {
             withActiveSounds(
-                sounds + Sound(
-                    id = id,
-                    uri = uri,
-                    name = name,
-                    loop = defaultLoop,
-                    tapBehavior = defaultTapBehavior,
-                    fadeInMs = defaultFadeInMs,
-                    fadeOutMs = defaultFadeOutMs,
-                )
+                sounds +
+                    Sound(
+                        id = id,
+                        uri = uri,
+                        name = name,
+                        loop = defaultLoop,
+                        tapBehavior = defaultTapBehavior,
+                        fadeInMs = defaultFadeInMs,
+                        fadeOutMs = defaultFadeOutMs,
+                    ),
             )
         }
 
@@ -89,63 +95,81 @@ data class SoundLibrary(
         percent: Int,
     ): SoundLibrary =
         withActiveSounds(
-                sounds.map { sound ->
-                    if (sound.id == id) {
-                        sound.copy(
-                            volumePercent =
-                                percent.coerceIn(
-                                    Sound.MIN_VOLUME_PERCENT,
-                                    Sound.MAX_VOLUME_PERCENT,
-                                ),
-                        )
-                    } else {
-                        sound
-                    }
-                },
-        )
-
-    fun withLoop(id: String, loop: Boolean): SoundLibrary =
-        withActiveSounds(sounds.map { if (it.id == id) it.copy(loop = loop) else it })
-
-    fun withTapBehavior(id: String, behavior: TapBehavior): SoundLibrary =
-        withActiveSounds(sounds.map { if (it.id == id) it.copy(tapBehavior = behavior) else it })
-
-    fun withDefaultTapBehavior(behavior: TapBehavior): SoundLibrary =
-        copy(defaultTapBehavior = behavior)
-
-    fun withFade(id: String, fadeIn: Boolean, durationMs: Int): SoundLibrary =
-        withActiveSounds(sounds.map { sound ->
-            if (sound.id != id) sound else if (fadeIn) {
-                sound.copy(fadeInMs = durationMs.coerceIn(0, 5000))
-            } else {
-                sound.copy(fadeOutMs = durationMs.coerceIn(0, 5000))
-            }
-        })
-
-    fun withDefaultFade(fadeIn: Boolean, durationMs: Int): SoundLibrary =
-        if (fadeIn) copy(defaultFadeInMs = durationMs.coerceIn(0, 5000))
-        else copy(defaultFadeOutMs = durationMs.coerceIn(0, 5000))
-
-    fun withDefaultLoop(loop: Boolean): SoundLibrary =
-        copy(defaultLoop = loop)
-
-    fun withAllowSimultaneousPlayback(allow: Boolean): SoundLibrary =
-        copy(allowSimultaneousPlayback = allow)
-
-    /** Sets the global default row height level (1..5). */
-    fun withDefaultRowHeightLevel(level: Int): SoundLibrary =
-        copy(defaultRowHeightLevel = level.coerceIn(1, 5))
-
-    /** Sets a board-specific level, or null to inherit the global default. */
-    fun withBoardRowHeightLevel(boardId: String, level: Int?): SoundLibrary =
-        copy(
-            boards = boards.map { board ->
-                if (board.id == boardId) {
-                    board.copy(rowHeightLevel = level?.coerceIn(1, 5))
+            sounds.map { sound ->
+                if (sound.id == id) {
+                    sound.copy(
+                        volumePercent =
+                            percent.coerceIn(
+                                Sound.MIN_VOLUME_PERCENT,
+                                Sound.MAX_VOLUME_PERCENT,
+                            ),
+                    )
                 } else {
-                    board
+                    sound
                 }
             },
+        )
+
+    fun withLoop(
+        id: String,
+        loop: Boolean,
+    ): SoundLibrary = withActiveSounds(sounds.map { if (it.id == id) it.copy(loop = loop) else it })
+
+    fun withTapBehavior(
+        id: String,
+        behavior: TapBehavior,
+    ): SoundLibrary = withActiveSounds(sounds.map { if (it.id == id) it.copy(tapBehavior = behavior) else it })
+
+    fun withDefaultTapBehavior(behavior: TapBehavior): SoundLibrary = copy(defaultTapBehavior = behavior)
+
+    fun withFade(
+        id: String,
+        fadeIn: Boolean,
+        durationMs: Int,
+    ): SoundLibrary =
+        withActiveSounds(
+            sounds.map { sound ->
+                if (sound.id != id) {
+                    sound
+                } else if (fadeIn) {
+                    sound.copy(fadeInMs = durationMs.coerceIn(0, 5000))
+                } else {
+                    sound.copy(fadeOutMs = durationMs.coerceIn(0, 5000))
+                }
+            },
+        )
+
+    fun withDefaultFade(
+        fadeIn: Boolean,
+        durationMs: Int,
+    ): SoundLibrary =
+        if (fadeIn) {
+            copy(defaultFadeInMs = durationMs.coerceIn(0, 5000))
+        } else {
+            copy(defaultFadeOutMs = durationMs.coerceIn(0, 5000))
+        }
+
+    fun withDefaultLoop(loop: Boolean): SoundLibrary = copy(defaultLoop = loop)
+
+    fun withAllowSimultaneousPlayback(allow: Boolean): SoundLibrary = copy(allowSimultaneousPlayback = allow)
+
+    /** Sets the global default row height level (1..5). */
+    fun withDefaultRowHeightLevel(level: Int): SoundLibrary = copy(defaultRowHeightLevel = level.coerceIn(1, 5))
+
+    /** Sets a board-specific level, or null to inherit the global default. */
+    fun withBoardRowHeightLevel(
+        boardId: String,
+        level: Int?,
+    ): SoundLibrary =
+        copy(
+            boards =
+                boards.map { board ->
+                    if (board.id == boardId) {
+                        board.copy(rowHeightLevel = level?.coerceIn(1, 5))
+                    } else {
+                        board
+                    }
+                },
         )
 
     /** Resolves the effective level for a board, including inheritance. */
@@ -208,5 +232,7 @@ data class SoundLibrary(
         return withActiveSounds(known + remaining)
     }
 
-    companion object { const val DEFAULT_BOARD_ID = "default" }
+    companion object {
+        const val DEFAULT_BOARD_ID = "default"
+    }
 }
