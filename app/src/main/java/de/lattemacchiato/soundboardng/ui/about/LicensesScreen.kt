@@ -80,6 +80,7 @@ private val DEPENDENCIES =
 @Composable
 fun LicensesScreen(
     onOpenDrawer: () -> Unit,
+    onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val openUrl = rememberUrlOpener()
@@ -87,6 +88,7 @@ fun LicensesScreen(
     DrawerScaffold(
         titleRes = R.string.nav_licenses,
         onOpenDrawer = onOpenDrawer,
+        onBack = onBack,
         modifier = modifier,
     ) { padding ->
         LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {

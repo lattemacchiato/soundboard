@@ -68,12 +68,26 @@ fun AppNavHost(
             BackHandler(onBack = onReturnToDrawer)
             AboutScreen(
                 onOpenDrawer = onOpenDrawer,
+                onBack = onReturnToDrawer,
                 onOpenLicenses = { navController.navigate(Destination.Licenses.route) },
             )
         }
         composable(Destination.Licenses.route) {
-            BackHandler(onBack = onReturnToDrawer)
-            LicensesScreen(onOpenDrawer = onOpenDrawer)
+            val onBack: () -> Unit = {
+                if (navController.previousBackStackEntry?.destination?.route == Destination.About.route) {
+                    navController.popBackStack()
+                } else {
+                    onReturnToDrawer()
+                }
+                Unit
+            }
+
+            BackHandler(onBack = onBack)
+
+            LicensesScreen(
+                onOpenDrawer = onOpenDrawer,
+                onBack = onBack,
+            )
         }
         composable(Destination.BoardSelector.route) {
             BackHandler(onBack = onReturnToDrawer)

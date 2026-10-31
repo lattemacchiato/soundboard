@@ -36,12 +36,14 @@ import de.lattemacchiato.soundboardng.ui.components.rememberUrlOpener
 @Composable
 fun AboutScreen(
     onOpenDrawer: () -> Unit,
+    onBack: () -> Unit,
     onOpenLicenses: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     DrawerScaffold(
         titleRes = R.string.nav_about,
         onOpenDrawer = onOpenDrawer,
+        onBack = onBack,
         modifier = modifier,
     ) { padding ->
         Column(

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -42,6 +43,7 @@ fun DrawerScaffold(
     @StringRes titleRes: Int,
     title: String? = null,
     onOpenDrawer: () -> Unit,
+    onBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     menuEnabled: Boolean = true,
     onTitleClick: (() -> Unit)? = null,
@@ -74,11 +76,21 @@ fun DrawerScaffold(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onOpenDrawer, enabled = menuEnabled) {
-                        Icon(
-                            Icons.Filled.Menu,
-                            contentDescription = stringResource(R.string.nav_menu_content_description),
-                        )
+                    IconButton(
+                        onClick = onBack ?: onOpenDrawer,
+                        enabled = onBack != null || menuEnabled,
+                    ) {
+                        if (onBack != null) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.nav_back),
+                            )
+                        } else {
+                            Icon(
+                                Icons.Filled.Menu,
+                                contentDescription = stringResource(R.string.nav_menu_content_description),
+                            )
+                        }
                     }
                 },
                 actions = actions,
