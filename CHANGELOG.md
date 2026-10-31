@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/lattemacchiato/soundboard/compare/v1.1.0...v1.1.1) (2026-10-31)
+
+
+### Bug Fixes
+
+* **ci:** use separate release pull requests ([dc2c96b](https://github.com/lattemacchiato/soundboard/commit/dc2c96b211b674746ca0c46e4ad7fe5199a4f824))
+* **ci:** use separate release pull requests ([4b22bc2](https://github.com/lattemacchiato/soundboard/commit/4b22bc2c757f3423514f0bca361fb0fb4bcab54e))
+
 ## [1.1.0](https://github.com/lattemacchiato/soundboard/compare/v1.0.0...v1.1.0) (2026-10-31)
 
 
