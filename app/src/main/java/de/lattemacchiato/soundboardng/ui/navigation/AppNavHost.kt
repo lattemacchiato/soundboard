@@ -86,7 +86,6 @@ fun AppNavHost(
                 boards = boards,
                 activeBoardId = activeBoardId,
                 locked = locked,
-                onCreate = onCreateBoard,
                 onRename = onRenameBoard,
                 onDelete = onDeleteBoard,
                 onBack = onReturnToDrawer,

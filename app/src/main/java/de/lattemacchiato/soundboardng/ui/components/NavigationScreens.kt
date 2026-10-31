@@ -6,6 +6,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.Composable
@@ -13,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import de.lattemacchiato.soundboardng.data.SoundBoard
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,7 +83,6 @@ fun BoardManagementScreen(
     locked: Boolean,
     defaultRowHeightLevel: Int,
     onRowHeightLevelChange: (Int?) -> Unit,
-    onCreate: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
     onBack: () -> Unit,
@@ -90,27 +92,51 @@ fun BoardManagementScreen(
             modifier = Modifier.fillMaxSize().padding(padding).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("Current board", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            Text(
+                "Board",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("Board:", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(
-                    boards.firstOrNull { it.id == activeBoardId }?.name ?: "–",
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick = onRename, enabled = !locked && boards.isNotEmpty()) {
-                    Text("Rename")
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Name",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        boards.firstOrNull { it.id == activeBoardId }?.name ?: "–",
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
                 }
-                OutlinedButton(onClick = onDelete, enabled = !locked && boards.size > 1) {
-                    Text("Delete")
+
+                IconButton(
+                    onClick = onRename,
+                    enabled = !locked && boards.isNotEmpty(),
+                ) {
+                    Icon(
+                        Icons.Filled.Edit,
+                        contentDescription = "Rename board",
+                    )
+                }
+
+                IconButton(
+                    onClick = onDelete,
+                    enabled = !locked && boards.size > 1,
+                ) {
+                    Icon(
+                        Icons.Filled.Delete,
+                        contentDescription = "Delete board",
+                    )
                 }
             }
+
+            HorizontalDivider()
 
             val activeBoard = boards.firstOrNull { it.id == activeBoardId }
             val customLevel = activeBoard?.rowHeightLevel

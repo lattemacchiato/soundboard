@@ -307,7 +307,15 @@ fun AppScaffold() {
                             app.engine.pauseAll()
                             oldSounds.forEach { app.engine.release(it.id) }
                             app.repository.deleteBoard(id)
-                            drawerState.close()
+
+                            navController.navigate(Destination.Soundboard.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    inclusive = false
+                                }
+                                launchSingleTop = true
+                            }
+
+                            drawerState.open()
                         }
                     }
                 }) { Text("Delete") }
