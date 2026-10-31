@@ -3,47 +3,48 @@ package de.lattemacchiato.soundboardng.ui.components
 import android.app.Activity
 import android.content.Intent
 import androidx.activity.compose.BackHandler
-import de.lattemacchiato.soundboardng.audio.PlaybackService
-import de.lattemacchiato.soundboardng.audio.PlaybackStatus
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.platform.LocalContext
-import de.lattemacchiato.soundboardng.SoundboardApp
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import de.lattemacchiato.soundboardng.R
+import de.lattemacchiato.soundboardng.SoundboardApp
+import de.lattemacchiato.soundboardng.audio.PlaybackService
+import de.lattemacchiato.soundboardng.audio.PlaybackStatus
 import de.lattemacchiato.soundboardng.ui.navigation.AppNavHost
 import de.lattemacchiato.soundboardng.ui.navigation.Destination
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 /**
  * Hosts the navigation drawer and the nav graph.
@@ -69,12 +70,15 @@ fun AppScaffold() {
     var editor by remember { mutableStateOf<BoardEditor?>(null) }
     var deleteBoardId by remember { mutableStateOf<String?>(null) }
     var confirmExit by remember { mutableStateOf(false) }
+    var boardSelectorOpenedFromTitle by remember { mutableStateOf(false) }
     val playbackStatuses by app.engine.statuses.collectAsState()
 
     fun exitAndStop() {
         // release() cancels fades and releases paused AND playing players.
         // Do not call releaseAll(): it permanently disables this Application engine.
-        app.engine.statuses.value.keys.toList().forEach(app.engine::release)
+        app.engine.statuses.value.keys
+            .toList()
+            .forEach(app.engine::release)
         context.stopService(Intent(context, PlaybackService::class.java))
         activity?.finish()
     }
@@ -89,7 +93,6 @@ fun AppScaffold() {
         app.repository.selectBoard(id)
     }
 
-
     val drawerState = androidx.compose.material3.rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -100,12 +103,14 @@ fun AppScaffold() {
             drawerState.close()
             editor = null
             deleteBoardId = null
-            if (navController.currentDestination?.route in listOf(
+            if (navController.currentDestination?.route in
+                listOf(
                     Destination.BoardSelector.route,
                     Destination.BoardManagement.route,
                     Destination.Settings.route,
                     Destination.BackupRestore.route,
-                )) {
+                )
+            ) {
                 navController.navigate(Destination.Soundboard.route) {
                     popUpTo(navController.graph.findStartDestination().id) { inclusive = false }
                     launchSingleTop = true
@@ -116,6 +121,11 @@ fun AppScaffold() {
 
     fun openDestination(destination: Destination) {
         if (locked && destination !in listOf(Destination.About, Destination.Licenses)) return
+
+        if (destination == Destination.BoardSelector) {
+            boardSelectorOpenedFromTitle = false
+        }
+
         scope.launch { drawerState.close() }
         navController.navigate(destination.route) {
             popUpTo(navController.graph.findStartDestination().id) { saveState = true }
@@ -135,18 +145,14 @@ fun AppScaffold() {
                     modifier = Modifier.padding(horizontal = 28.dp, vertical = 20.dp),
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp))
-                Text(
-                    text = "CURRENT BOARD",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 28.dp, top = 16.dp, bottom = 4.dp),
-                )
                 NavigationDrawerItem(
                     label = {
                         Column {
-                            Text(boards.firstOrNull { it.id == activeBoardId }?.name ?: "No board selected")
+                            Text("Choose Board")
                             Text(
-                                "Choose board",
+                                text =
+                                    boards.firstOrNull { it.id == activeBoardId }?.name
+                                        ?: "No board selected",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -159,7 +165,7 @@ fun AppScaffold() {
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                 )
                 NavigationDrawerItem(
-                    label = { Text("Manage boards") },
+                    label = { Text("Manage board") },
                     icon = { Icon(Icons.Filled.FolderOpen, contentDescription = null) },
                     selected = false,
                     onClick = { openDestination(Destination.BoardManagement) },
@@ -170,6 +176,13 @@ fun AppScaffold() {
                     icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
                     selected = false,
                     onClick = { openDestination(Destination.Settings) },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                )
+                NavigationDrawerItem(
+                    label = { Text("Backup & Restore") },
+                    icon = { Icon(Icons.Filled.Save, contentDescription = null) },
+                    selected = false,
+                    onClick = { openDestination(Destination.BackupRestore) },
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp))
@@ -190,6 +203,14 @@ fun AppScaffold() {
         AppNavHost(
             navController = navController,
             onOpenDrawer = { if (!locked) scope.launch { drawerState.open() } },
+            onChooseBoard = {
+                if (!locked) {
+                    boardSelectorOpenedFromTitle = true
+                    navController.navigate(Destination.BoardSelector.route) {
+                        launchSingleTop = true
+                    }
+                }
+            },
             onSelectBoard = { id ->
                 scope.launch {
                     switchToBoard(id)
@@ -197,9 +218,13 @@ fun AppScaffold() {
                 }
             },
             onCreateBoard = { if (!locked) editor = BoardEditor.Create },
-            onRenameBoard = { if (!locked) editor = BoardEditor.Rename(activeBoardId, boards.firstOrNull { it.id == activeBoardId }?.name.orEmpty()) },
+            onRenameBoard = {
+                if (!locked) {
+                    editor =
+                        BoardEditor.Rename(activeBoardId, boards.firstOrNull { it.id == activeBoardId }?.name.orEmpty())
+                }
+            },
             onDeleteBoard = { if (!locked && boards.size > 1) deleteBoardId = activeBoardId },
-            onOpenBackup = { if (!locked) navController.navigate(Destination.BackupRestore.route) },
             onExitRequested = {
                 if (playbackStatuses.values.any { it == PlaybackStatus.PLAYING || it == PlaybackStatus.PAUSED }) {
                     confirmExit = true
@@ -208,9 +233,15 @@ fun AppScaffold() {
                 }
             },
             onReturnToDrawer = {
-                if (navController.popBackStack()) {
+                val fromTitle =
+                    currentRoute == Destination.BoardSelector.route &&
+                        boardSelectorOpenedFromTitle
+
+                if (navController.popBackStack() && !fromTitle) {
                     scope.launch { drawerState.open() }
                 }
+
+                boardSelectorOpenedFromTitle = false
             },
         )
     }
@@ -236,75 +267,92 @@ fun AppScaffold() {
         )
     }
 
-    if (!locked) editor?.let { current ->
-        var name by remember(current) {
-            mutableStateOf(if (current is BoardEditor.Rename) current.name else "")
-        }
-        AlertDialog(
-            onDismissRequest = { editor = null },
-            title = { Text(if (current is BoardEditor.Create) "New board" else "Rename board") },
-            text = {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Board name") },
-                    singleLine = true,
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = name.isNotBlank(),
-                    onClick = {
-                        editor = null
-                        scope.launch {
-                            if (!app.lockSettings.locked.value) {
-                                when (current) {
-                                    is BoardEditor.Create -> {
-                                        val id = app.repository.createBoard(name)
-                                        if (id != null) {
-                                            switchToBoard(id)
-                                            if (navController.currentDestination?.route == Destination.BoardSelector.route) {
-                                                navController.popBackStack()
+    if (!locked) {
+        editor?.let { current ->
+            var name by remember(current) {
+                mutableStateOf(if (current is BoardEditor.Rename) current.name else "")
+            }
+            AlertDialog(
+                onDismissRequest = { editor = null },
+                title = { Text(if (current is BoardEditor.Create) "New board" else "Rename board") },
+                text = {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Board name") },
+                        singleLine = true,
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        enabled = name.isNotBlank(),
+                        onClick = {
+                            editor = null
+                            scope.launch {
+                                if (!app.lockSettings.locked.value) {
+                                    when (current) {
+                                        is BoardEditor.Create -> {
+                                            val id = app.repository.createBoard(name)
+                                            if (id != null) {
+                                                switchToBoard(id)
+                                                if (navController.currentDestination?.route ==
+                                                    Destination.BoardSelector.route
+                                                ) {
+                                                    navController.popBackStack()
+                                                }
                                             }
                                         }
+                                        is BoardEditor.Rename -> app.repository.renameBoard(current.id, name)
                                     }
-                                    is BoardEditor.Rename -> app.repository.renameBoard(current.id, name)
+                                    drawerState.close()
                                 }
-                                drawerState.close()
+                            }
+                        },
+                    ) { Text("Save") }
+                },
+                dismissButton = { TextButton(onClick = { editor = null }) { Text("Cancel") } },
+            )
+        }
+    }
+    if (!locked) {
+        deleteBoardId?.let { id ->
+            AlertDialog(
+                onDismissRequest = { deleteBoardId = null },
+                title = { Text("Delete board?") },
+                text = { Text("The board and its sound entries will be removed. Audio files will not be deleted.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        deleteBoardId = null
+                        scope.launch {
+                            if (!app.lockSettings.locked.value && boards.size > 1) {
+                                val oldSounds = app.repository.sounds.first()
+                                app.engine.pauseAll()
+                                oldSounds.forEach { app.engine.release(it.id) }
+                                app.repository.deleteBoard(id)
+
+                                navController.navigate(Destination.Soundboard.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        inclusive = false
+                                    }
+                                    launchSingleTop = true
+                                }
+
+                                drawerState.open()
                             }
                         }
-                    },
-                ) { Text("Save") }
-            },
-            dismissButton = { TextButton(onClick = { editor = null }) { Text("Cancel") } },
-        )
-    }
-    if (!locked) deleteBoardId?.let { id ->
-        AlertDialog(
-            onDismissRequest = { deleteBoardId = null },
-            title = { Text("Delete board?") },
-            text = { Text("The board and its sound entries will be removed. Audio files will not be deleted.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    deleteBoardId = null
-                    scope.launch {
-                        if (!app.lockSettings.locked.value && boards.size > 1) {
-                            val oldSounds = app.repository.sounds.first()
-                            app.engine.pauseAll()
-                            oldSounds.forEach { app.engine.release(it.id) }
-                            app.repository.deleteBoard(id)
-                            drawerState.close()
-                        }
-                    }
-                }) { Text("Delete") }
-            },
-            dismissButton = { TextButton(onClick = { deleteBoardId = null }) { Text("Cancel") } },
-        )
+                    }) { Text("Delete") }
+                },
+                dismissButton = { TextButton(onClick = { deleteBoardId = null }) { Text("Cancel") } },
+            )
+        }
     }
 }
 
 private sealed interface BoardEditor {
     data object Create : BoardEditor
-    data class Rename(val id: String, val name: String) : BoardEditor
-}
 
+    data class Rename(
+        val id: String,
+        val name: String,
+    ) : BoardEditor
+}

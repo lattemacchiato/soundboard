@@ -2,13 +2,35 @@ package de.lattemacchiato.soundboardng.ui.components
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -17,8 +39,8 @@ import de.lattemacchiato.soundboardng.data.BackupPreview
 import de.lattemacchiato.soundboardng.data.ConfigurationBackup
 import de.lattemacchiato.soundboardng.data.FullBackup
 import de.lattemacchiato.soundboardng.data.FullBackupPreview
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,39 +55,77 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
     var fullPreview by remember { mutableStateOf<FullBackupPreview?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
 
-    val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
-        if (uri != null && !locked) scope.launch {
-            busy = true
-            try { backup.export(uri); message = "Configuration exported successfully." }
-            catch (e: Exception) { message = "Export failed: ${e.message}" }
-            finally { busy = false }
+    val export =
+        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+            if (uri != null && !locked) {
+                scope.launch {
+                    busy = true
+                    try {
+                        backup.export(uri)
+                        message = "Configuration exported successfully."
+                    } catch (
+                        e: Exception,
+                    ) {
+                        message = "Export failed: ${e.message}"
+                    } finally {
+                        busy = false
+                    }
+                }
+            }
         }
-    }
-    val import = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null && !locked) scope.launch {
-            busy = true
-            try { preview = backup.inspect(uri) }
-            catch (e: Exception) { message = "Import failed: ${e.message}" }
-            finally { busy = false }
+    val import =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null && !locked) {
+                scope.launch {
+                    busy = true
+                    try {
+                        preview = backup.inspect(uri)
+                    } catch (
+                        e: Exception,
+                    ) {
+                        message = "Import failed: ${e.message}"
+                    } finally {
+                        busy = false
+                    }
+                }
+            }
         }
-    }
 
-    val exportZip = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
-        if (uri != null && !locked) scope.launch {
-            busy = true
-            try { fullBackup.export(uri); message = "Full backup exported successfully." }
-            catch (e: Exception) { message = "ZIP export failed: ${e.message}" }
-            finally { busy = false }
+    val exportZip =
+        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+            if (uri != null && !locked) {
+                scope.launch {
+                    busy = true
+                    try {
+                        fullBackup.export(uri)
+                        message = "Full backup exported successfully."
+                    } catch (
+                        e: Exception,
+                    ) {
+                        message = "ZIP export failed: ${e.message}"
+                    } finally {
+                        busy = false
+                    }
+                }
+            }
         }
-    }
-    val importZip = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null && !locked) scope.launch {
-            busy = true
-            try { fullPreview = fullBackup.inspect(uri) }
-            catch (e: Exception) { message = "ZIP import failed: ${e.message}" }
-            finally { busy = false }
+    val importZip =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null && !locked) {
+                scope.launch {
+                    busy = true
+                    try {
+                        fullPreview = fullBackup.inspect(uri)
+                    } catch (
+                        e: Exception,
+                    ) {
+                        message = "ZIP import failed: ${e.message}"
+                    } finally {
+                        busy = false
+                    }
+                }
+            }
         }
-    }
 
     Scaffold(topBar = {
         TopAppBar(title = { Text("Backup & Restore") }, navigationIcon = {
@@ -73,23 +133,42 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
         })
     }) { padding ->
         Column(
-            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Text("Export configuration", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            Text(
+                "Export configuration",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
             Text("Save all boards, sound settings and global preferences as JSON. Audio files are not included.")
             Button(enabled = !locked && !busy, onClick = { export.launch("soundboard-configuration.json") }) {
                 Text("Export JSON")
             }
             HorizontalDivider()
-            Text("Import configuration", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-            Text("Replace the current configuration from a JSON backup. Audio file references must still be accessible on this device.")
-            OutlinedButton(enabled = !locked && !busy, onClick = { import.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }) {
+            Text(
+                "Import configuration",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                "Replace the current configuration from a JSON backup. Audio file references must still be accessible on this device.",
+            )
+            OutlinedButton(enabled = !locked && !busy, onClick = {
+                import.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
+            }) {
                 Text("Choose JSON backup…")
             }
             HorizontalDivider()
-            Text("Full backup (ZIP)", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            Text(
+                "Full backup (ZIP)",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
             Text("Includes all boards, settings and audio files. Suitable for transferring to another device.")
             Button(enabled = !locked && !busy, onClick = { exportZip.launch("soundboard-full-backup.zip") }) {
                 Text("Export full ZIP")
@@ -107,12 +186,22 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
             title = { Text("Replace current configuration?") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Backup contains ${candidate.boardCount} board(s) and ${candidate.soundCount} sound(s). All current boards and settings will be replaced.")
+                    Text(
+                        "Backup contains ${candidate.boardCount} board(s) and ${candidate.soundCount} sound(s). All current boards and settings will be replaced.",
+                    )
                     if (candidate.unavailableSounds.isNotEmpty()) {
-                        Text("Warning: ${candidate.unavailableSounds.size} audio reference(s) are unavailable on this device. These sounds will not play until relinked.", color = MaterialTheme.colorScheme.error)
-                        Text(candidate.unavailableSounds.take(5).joinToString(", ") + if (candidate.unavailableSounds.size > 5) "…" else "")
+                        Text(
+                            "Warning: ${candidate.unavailableSounds.size} audio reference(s) are unavailable on this device. These sounds will not play until relinked.",
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                        Text(
+                            candidate.unavailableSounds.take(5).joinToString(", ") +
+                                if (candidate.unavailableSounds.size > 5) "…" else "",
+                        )
                     }
-                    Text("A recovery copy of the previous configuration will be saved in private app storage before importing.")
+                    Text(
+                        "A recovery copy of the previous configuration will be saved in private app storage before importing.",
+                    )
                 }
             },
             confirmButton = {
@@ -121,12 +210,17 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                         busy = true
                         try {
                             app.engine.pauseAll()
-                            app.repository.sounds.first().forEach { app.engine.release(it.id) }
+                            app.repository.sounds
+                                .first()
+                                .forEach { app.engine.release(it.id) }
                             backup.restore(candidate)
                             preview = null
                             message = "Configuration imported successfully."
-                        } catch (e: Exception) { message = "Import failed: ${e.message}" }
-                        finally { busy = false }
+                        } catch (e: Exception) {
+                            message = "Import failed: ${e.message}"
+                        } finally {
+                            busy = false
+                        }
                     }
                 }) { Text("Replace") }
             },
@@ -139,9 +233,13 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
             title = { Text("Restore full backup?") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("${candidate.boardCount} board(s), ${candidate.soundCount} sound(s), " +
-                        "${candidate.audioCount} audio file(s).")
-                    Text("All current boards and settings will be replaced. Audio will be copied into private app storage.")
+                    Text(
+                        "${candidate.boardCount} board(s), ${candidate.soundCount} sound(s), " +
+                            "${candidate.audioCount} audio file(s).",
+                    )
+                    Text(
+                        "All current boards and settings will be replaced. Audio will be copied into private app storage.",
+                    )
                     Text("A recovery copy of the previous configuration will be saved.")
                 }
             },
@@ -151,12 +249,17 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                         busy = true
                         try {
                             app.engine.pauseAll()
-                            app.repository.sounds.first().forEach { app.engine.release(it.id) }
+                            app.repository.sounds
+                                .first()
+                                .forEach { app.engine.release(it.id) }
                             fullBackup.restore(candidate)
                             fullPreview = null
                             message = "Full backup restored successfully."
-                        } catch (e: Exception) { message = "ZIP restore failed: ${e.message}" }
-                        finally { busy = false }
+                        } catch (e: Exception) {
+                            message = "ZIP restore failed: ${e.message}"
+                        } finally {
+                            busy = false
+                        }
                     }
                 }) { Text("Replace") }
             },

@@ -4,10 +4,15 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -17,9 +22,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import de.lattemacchiato.soundboardng.R
 
@@ -36,8 +43,10 @@ fun DrawerScaffold(
     @StringRes titleRes: Int,
     title: String? = null,
     onOpenDrawer: () -> Unit,
+    onBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     menuEnabled: Boolean = true,
+    onTitleClick: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
     floatingActionButton: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
@@ -46,13 +55,42 @@ fun DrawerScaffold(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text(title ?: stringResource(titleRes)) },
+                title = {
+                    val titleText = title ?: stringResource(titleRes)
+
+                    if (onTitleClick != null && menuEnabled) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.clickable(onClick = onTitleClick),
+                        ) {
+                            Text(titleText)
+                            Icon(
+                                imageVector = Icons.Filled.KeyboardArrowDown,
+                                contentDescription = null,
+                                modifier = Modifier.padding(top = 2.dp),
+                            )
+                        }
+                    } else {
+                        Text(titleText)
+                    }
+                },
                 navigationIcon = {
-                    IconButton(onClick = onOpenDrawer, enabled = menuEnabled) {
-                        Icon(
-                            Icons.Filled.Menu,
-                            contentDescription = stringResource(R.string.nav_menu_content_description),
-                        )
+                    IconButton(
+                        onClick = onBack ?: onOpenDrawer,
+                        enabled = onBack != null || menuEnabled,
+                    ) {
+                        if (onBack != null) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.nav_back),
+                            )
+                        } else {
+                            Icon(
+                                Icons.Filled.Menu,
+                                contentDescription = stringResource(R.string.nav_menu_content_description),
+                            )
+                        }
                     }
                 },
                 actions = actions,

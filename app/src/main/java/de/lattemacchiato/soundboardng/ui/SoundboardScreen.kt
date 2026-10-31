@@ -2,10 +2,10 @@ package de.lattemacchiato.soundboardng.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -17,9 +17,9 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.StopCircle
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.StopCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -28,6 +28,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -55,14 +58,12 @@ import de.lattemacchiato.soundboardng.ui.components.RenameDialog
 import de.lattemacchiato.soundboardng.ui.components.ReorderableSoundList
 import de.lattemacchiato.soundboardng.ui.components.SoundRow
 import de.lattemacchiato.soundboardng.ui.components.VolumeDialDialog
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SoundboardScreen(
     onOpenDrawer: () -> Unit,
+    onChooseBoard: () -> Unit,
     viewModel: SoundboardViewModel = viewModel(factory = SoundboardViewModel.Factory),
 ) {
     val rows by viewModel.rows.collectAsStateWithLifecycle()
@@ -70,10 +71,26 @@ fun SoundboardScreen(
     val locked by viewModel.locked.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // added for soudboard title
+    // added for soundboard title
     val app = context.applicationContext as de.lattemacchiato.soundboardng.SoundboardApp
     val boards by app.repository.boards.collectAsStateWithLifecycle(initialValue = emptyList())
     val activeBoardId by app.repository.activeBoardId.collectAsStateWithLifecycle(initialValue = "default")
+
+    val defaultRowHeightLevel by app.repository.defaultRowHeightLevel
+        .collectAsStateWithLifecycle(initialValue = 1)
+
+    val boardRowHeightLevel = boards.firstOrNull { it.id == activeBoardId }?.rowHeightLevel
+    val effectiveRowHeightLevel = (boardRowHeightLevel ?: defaultRowHeightLevel).coerceIn(1, 5)
+
+    val rowHeight =
+        when (effectiveRowHeightLevel) {
+            1 -> 64.dp
+            2 -> 80.dp
+            3 -> 96.dp
+            4 -> 120.dp
+            else -> 144.dp
+        }
+
     val activeBoardName = boards.firstOrNull { it.id == activeBoardId }?.name
 
     // Which sound each transient piece of UI is about, or null when closed.
@@ -110,6 +127,7 @@ fun SoundboardScreen(
         titleRes = if (rearranging) R.string.rearrange_title else R.string.app_name,
         title = if (rearranging) null else activeBoardName,
         onOpenDrawer = onOpenDrawer,
+        onTitleClick = if (!locked && !rearranging) onChooseBoard else null,
         menuEnabled = !locked,
         actions = {
             if (rows.isNotEmpty() && !locked) {
@@ -174,120 +192,142 @@ fun SoundboardScreen(
                         onVolumeClick = { if (!locked) volumeTarget = row.sound },
                         onLongPress = { if (!locked) optionsTarget = row.sound },
                         locked = locked,
+                        minHeight = rowHeight,
                     )
                 }
             }
         }
     }
 
-    if (!locked) volumeTarget?.let { sound ->
-        VolumeDialDialog(
-            sound = sound,
-            onPreview = { viewModel.previewVolume(sound.id, it) },
-            onCommit = { viewModel.commitVolume(sound.id, it) },
-            onDismiss = { volumeTarget = null },
-        )
+    if (!locked) {
+        volumeTarget?.let { sound ->
+            VolumeDialDialog(
+                sound = sound,
+                onPreview = { viewModel.previewVolume(sound.id, it) },
+                onCommit = { viewModel.commitVolume(sound.id, it) },
+                onDismiss = { volumeTarget = null },
+            )
+        }
     }
 
-    if (!locked) optionsTarget?.let { sound ->
-        ModalBottomSheet(onDismissRequest = { optionsTarget = null }) {
-            val currentSound = rows.firstOrNull { it.sound.id == sound.id }?.sound ?: sound
-            ListItem(headlineContent = { Text(sound.name) })
-            ListItem(
-                headlineContent = { Text("Loop") },
-                supportingContent = { Text(if (currentSound.loop) "Repeat continuously" else "Play once") },
-                trailingContent = {
-                    Switch(
-                        checked = currentSound.loop,
-                        onCheckedChange = { viewModel.setLoop(sound.id, it) },
-                    )
-                },
-            )
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-            ) {
-                Text(
-                    text = "Tap behavior",
-                    style = MaterialTheme.typography.titleMedium,
+    if (!locked) {
+        optionsTarget?.let { sound ->
+            ModalBottomSheet(onDismissRequest = { optionsTarget = null }) {
+                val currentSound = rows.firstOrNull { it.sound.id == sound.id }?.sound ?: sound
+                ListItem(
+                    headlineContent = { Text(sound.name) },
+                    trailingContent = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    optionsTarget = null
+                                    renameTarget = sound
+                                },
+                            ) {
+                                Icon(
+                                    Icons.Filled.Edit,
+                                    contentDescription = "Edit sound",
+                                )
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    optionsTarget = null
+                                    deleteTarget = sound
+                                },
+                            ) {
+                                Icon(
+                                    Icons.Filled.Delete,
+                                    contentDescription = "Delete sound",
+                                )
+                            }
+                        }
+                    },
                 )
-
-                SingleChoiceSegmentedButtonRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
+                ListItem(
+                    headlineContent = { Text("Loop") },
+                    supportingContent = { Text(if (currentSound.loop) "Repeat continuously" else "Play once") },
+                    trailingContent = {
+                        Switch(
+                            checked = currentSound.loop,
+                            onCheckedChange = { viewModel.setLoop(sound.id, it) },
+                        )
+                    },
+                )
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
-                    val behaviors = listOf(
-                        TapBehavior.PAUSE_RESUME to "Pause / Resume",
-                        TapBehavior.STOP_RESTART to "Stop / Restart",
+                    Text(
+                        text = "Tap behavior",
+                        style = MaterialTheme.typography.titleMedium,
                     )
 
-                    behaviors.forEachIndexed { index, (behavior, label) ->
-                        SegmentedButton(
-                            shape = SegmentedButtonDefaults.itemShape(
-                                index = index,
-                                count = behaviors.size,
-                            ),
-                            selected = currentSound.tapBehavior == behavior,
-                            onClick = {
-                                viewModel.setTapBehavior(sound.id, behavior)
-                            },
-                            label = { Text(label) },
-                        )
+                    SingleChoiceSegmentedButtonRow(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                    ) {
+                        val behaviors =
+                            listOf(
+                                TapBehavior.PAUSE_RESUME to "Pause / Resume",
+                                TapBehavior.STOP_RESTART to "Stop / Restart",
+                            )
+
+                        behaviors.forEachIndexed { index, (behavior, label) ->
+                            SegmentedButton(
+                                shape =
+                                    SegmentedButtonDefaults.itemShape(
+                                        index = index,
+                                        count = behaviors.size,
+                                    ),
+                                selected = currentSound.tapBehavior == behavior,
+                                onClick = {
+                                    viewModel.setTapBehavior(sound.id, behavior)
+                                },
+                                label = { Text(label) },
+                            )
+                        }
                     }
                 }
+                FadeSlider("Fade-in", currentSound.fadeInMs) { viewModel.setFade(sound.id, true, it) }
+                FadeSlider("Fade-out", currentSound.fadeOutMs) { viewModel.setFade(sound.id, false, it) }
             }
-            FadeSlider("Fade-in", currentSound.fadeInMs) { viewModel.setFade(sound.id, true, it) }
-            FadeSlider("Fade-out", currentSound.fadeOutMs) { viewModel.setFade(sound.id, false, it) }
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.edit)) },
-                leadingContent = { Icon(Icons.Filled.Edit, contentDescription = null) },
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            optionsTarget = null
-                            renameTarget = sound
-                        },
-            )
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.delete)) },
-                leadingContent = { Icon(Icons.Filled.Delete, contentDescription = null) },
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            optionsTarget = null
-                            deleteTarget = sound
-                        },
+        }
+    }
+
+    if (!locked) {
+        renameTarget?.let { sound ->
+            RenameDialog(
+                sound = sound,
+                onRename = { viewModel.rename(sound.id, it) },
+                onDismiss = { renameTarget = null },
             )
         }
     }
 
-    if (!locked) renameTarget?.let { sound ->
-        RenameDialog(
-            sound = sound,
-            onRename = { viewModel.rename(sound.id, it) },
-            onDismiss = { renameTarget = null },
-        )
-    }
-
-    if (!locked) deleteTarget?.let { sound ->
-        AlertDialog(
-            onDismissRequest = { deleteTarget = null },
-            title = { Text(stringResource(R.string.delete_title, sound.name)) },
-            text = { Text(stringResource(R.string.delete_message)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.remove(sound.id)
-                    deleteTarget = null
-                }) { Text(stringResource(R.string.remove)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { deleteTarget = null }) { Text(stringResource(R.string.cancel)) }
-            },
-        )
+    if (!locked) {
+        deleteTarget?.let { sound ->
+            AlertDialog(
+                onDismissRequest = { deleteTarget = null },
+                title = { Text(stringResource(R.string.delete_title, sound.name)) },
+                text = { Text(stringResource(R.string.delete_message)) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        viewModel.remove(sound.id)
+                        deleteTarget = null
+                    }) { Text(stringResource(R.string.remove)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { deleteTarget = null }) { Text(stringResource(R.string.cancel)) }
+                },
+            )
+        }
     }
 }
 
@@ -315,7 +355,11 @@ private fun EmptyState(modifier: Modifier = Modifier) {
 private const val AUDIO_MIME_TYPE = "audio/*"
 
 @Composable
-private fun FadeSlider(label: String, durationMs: Int, onCommit: (Int) -> Unit) {
+private fun FadeSlider(
+    label: String,
+    durationMs: Int,
+    onCommit: (Int) -> Unit,
+) {
     var value by remember(durationMs) { mutableStateOf(durationMs.toFloat()) }
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
         Text("$label: " + if (value < 250f) "Off" else "%.1f s".format(java.util.Locale.US, value / 1000f))

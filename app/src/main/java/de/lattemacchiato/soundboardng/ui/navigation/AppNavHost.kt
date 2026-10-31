@@ -4,19 +4,21 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.LocalContext
-import de.lattemacchiato.soundboardng.SoundboardApp
-import de.lattemacchiato.soundboardng.ui.components.BoardSelectorScreen
-import de.lattemacchiato.soundboardng.ui.components.BoardManagementScreen
-import de.lattemacchiato.soundboardng.ui.components.SettingsScreen
-import de.lattemacchiato.soundboardng.ui.components.BackupRestoreScreen
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import de.lattemacchiato.soundboardng.SoundboardApp
 import de.lattemacchiato.soundboardng.ui.SoundboardScreen
 import de.lattemacchiato.soundboardng.ui.about.AboutScreen
 import de.lattemacchiato.soundboardng.ui.about.LicensesScreen
+import de.lattemacchiato.soundboardng.ui.components.BackupRestoreScreen
+import de.lattemacchiato.soundboardng.ui.components.BoardManagementScreen
+import de.lattemacchiato.soundboardng.ui.components.BoardSelectorScreen
+import de.lattemacchiato.soundboardng.ui.components.SettingsScreen
+import kotlinx.coroutines.launch
 
 /**
  * Three flat destinations, each owning its own `Scaffold`.
@@ -35,14 +37,20 @@ fun AppNavHost(
     onCreateBoard: () -> Unit,
     onRenameBoard: () -> Unit,
     onDeleteBoard: () -> Unit,
+    onChooseBoard: () -> Unit,
     onReturnToDrawer: () -> Unit,
-    onOpenBackup: () -> Unit,
     onExitRequested: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val app = LocalContext.current.applicationContext as SoundboardApp
     val boards by app.repository.boards.collectAsState(initial = emptyList())
     val activeBoardId by app.repository.activeBoardId.collectAsState(initial = "default")
+
+    val defaultRowHeightLevel by app.repository.defaultRowHeightLevel
+        .collectAsState(initial = 1)
+
+    val scope = rememberCoroutineScope()
+
     val locked by app.lockSettings.locked.collectAsState()
     NavHost(
         navController = navController,
@@ -51,18 +59,35 @@ fun AppNavHost(
     ) {
         composable(Destination.Soundboard.route) {
             BackHandler(onBack = onExitRequested)
-            SoundboardScreen(onOpenDrawer = onOpenDrawer)
+            SoundboardScreen(
+                onOpenDrawer = onOpenDrawer,
+                onChooseBoard = onChooseBoard,
+            )
         }
         composable(Destination.About.route) {
             BackHandler(onBack = onReturnToDrawer)
             AboutScreen(
                 onOpenDrawer = onOpenDrawer,
+                onBack = onReturnToDrawer,
                 onOpenLicenses = { navController.navigate(Destination.Licenses.route) },
             )
         }
         composable(Destination.Licenses.route) {
-            BackHandler(onBack = onReturnToDrawer)
-            LicensesScreen(onOpenDrawer = onOpenDrawer)
+            val onBack: () -> Unit = {
+                if (navController.previousBackStackEntry?.destination?.route == Destination.About.route) {
+                    navController.popBackStack()
+                } else {
+                    onReturnToDrawer()
+                }
+                Unit
+            }
+
+            BackHandler(onBack = onBack)
+
+            LicensesScreen(
+                onOpenDrawer = onOpenDrawer,
+                onBack = onBack,
+            )
         }
         composable(Destination.BoardSelector.route) {
             BackHandler(onBack = onReturnToDrawer)
@@ -74,18 +99,29 @@ fun AppNavHost(
                 boards = boards,
                 activeBoardId = activeBoardId,
                 locked = locked,
-                onCreate = onCreateBoard,
                 onRename = onRenameBoard,
                 onDelete = onDeleteBoard,
                 onBack = onReturnToDrawer,
+                defaultRowHeightLevel = defaultRowHeightLevel,
+                onRowHeightLevelChange = { level ->
+                    if (!locked) {
+                        scope.launch {
+                            app.repository.setBoardRowHeightLevel(activeBoardId, level)
+                        }
+                    }
+                },
             )
         }
         composable(Destination.BackupRestore.route) {
-            BackupRestoreScreen(onBack = { navController.popBackStack() })
+            BackHandler {
+                onReturnToDrawer()
+            }
+
+            BackupRestoreScreen(onBack = onReturnToDrawer)
         }
         composable(Destination.Settings.route) {
             BackHandler(onBack = onReturnToDrawer)
-            SettingsScreen(onBack = onReturnToDrawer, onOpenBackup = onOpenBackup)
+            SettingsScreen(onBack = onReturnToDrawer)
         }
     }
 }

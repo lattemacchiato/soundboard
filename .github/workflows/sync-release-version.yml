@@ -1,0 +1,103 @@
+
+name: Sync release version
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_branch:
+        description: "Release Please branch (e.g. release-please--branches--main)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: read
+  actions: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Validate release PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ inputs.release_branch }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [[ ! "$BRANCH" =~ ^release-please--branches--main(--.*)?$ ]]; then
+            echo "Invalid release branch: $BRANCH" >&2
+            exit 1
+          fi
+
+          PR_DATA=$(gh api \
+          "repos/$REPO/pulls?state=open&base=main&head=${REPO%%/*}:$BRANCH")
+
+          PR_COUNT=$(jq 'length' <<< "$PR_DATA")
+
+          if [[ "$PR_COUNT" != "1" ]]; then
+          echo "Expected exactly one open release PR, found $PR_COUNT" >&2
+          exit 1
+          fi
+
+          PR_AUTHOR=$(jq -r '.[0].user.login' <<< "$PR_DATA")
+
+          if [[ "$PR_AUTHOR" != "github-actions[bot]" ]]; then
+          echo "Unexpected PR author: $PR_AUTHOR" >&2
+          exit 1
+          fi
+
+          echo "Validated release PR branch: $BRANCH"
+
+      - name: Checkout trusted synchronization script
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: trusted
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/sync-version.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_branch }}
+          path: release
+          persist-credentials: false
+
+      - name: Synchronize version files
+        env:
+          RELEASE_WORKTREE: ${{ github.workspace }}/release
+        run: bash "$GITHUB_WORKSPACE/trusted/scripts/sync-version.sh"
+
+      - name: Commit and push changes
+        working-directory: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ inputs.release_branch }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add app/build.gradle.kts fastlane/metadata/android/en-US/changelogs/
+
+          if git diff --cached --quiet; then
+            echo "Version files already synchronized."
+            exit 0
+          fi
+
+          git commit -m "chore: sync derived release version files"
+          gh auth setup-git
+          EXPECTED_SHA=$(git rev-parse HEAD^)
+          git push --force-with-lease="refs/heads/$BRANCH:$EXPECTED_SHA" \
+          origin "HEAD:refs/heads/$BRANCH"
+
+      - name: Trigger CI for release branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ inputs.release_branch }}
+        run: |
+          gh workflow run ci.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref "$BRANCH"

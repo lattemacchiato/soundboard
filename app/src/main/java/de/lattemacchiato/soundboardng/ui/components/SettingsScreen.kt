@@ -1,13 +1,43 @@
 package de.lattemacchiato.soundboardng.ui.components
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -20,7 +50,7 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onOpenBackup: () -> Unit) {
+fun SettingsScreen(onBack: () -> Unit) {
     val app = LocalContext.current.applicationContext as SoundboardApp
     val scope = rememberCoroutineScope()
     val locked by app.lockSettings.locked.collectAsState()
@@ -29,7 +59,17 @@ fun SettingsScreen(onBack: () -> Unit, onOpenBackup: () -> Unit) {
     val fadeOut by app.repository.defaultFadeOutMs.collectAsState(initial = 0)
     val simultaneous by app.repository.allowSimultaneousPlayback.collectAsState(initial = true)
     val theme by app.repository.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
-    var editingFadeIn by remember { mutableStateOf<Boolean?>(null) }
+    val defaultRowHeightLevel by app.repository.defaultRowHeightLevel
+        .collectAsState(initial = 1)
+    val defaultLoop by app.repository.defaultLoop.collectAsState(initial = true)
+
+    var rowHeightSlider by remember {
+        mutableFloatStateOf(defaultRowHeightLevel.toFloat())
+    }
+
+    LaunchedEffect(defaultRowHeightLevel) {
+        rowHeightSlider = defaultRowHeightLevel.toFloat()
+    }
 
     Scaffold(topBar = {
         TopAppBar(title = { Text("Settings") }, navigationIcon = {
@@ -39,9 +79,12 @@ fun SettingsScreen(onBack: () -> Unit, onOpenBackup: () -> Unit) {
         })
     }) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             SettingsSectionTitle("Default tap behavior for new sounds")
@@ -51,10 +94,11 @@ fun SettingsScreen(onBack: () -> Unit, onOpenBackup: () -> Unit) {
                 onExpandedChange = { if (!locked) tapMenuExpanded = !tapMenuExpanded },
             ) {
                 OutlinedTextField(
-                    value = when (tap) {
-                        TapBehavior.PAUSE_RESUME -> "Pause / Resume"
-                        TapBehavior.STOP_RESTART -> "Stop / Restart"
-                    },
+                    value =
+                        when (tap) {
+                            TapBehavior.PAUSE_RESUME -> "Pause / Resume"
+                            TapBehavior.STOP_RESTART -> "Stop / Restart"
+                        },
                     onValueChange = {},
                     readOnly = true,
                     enabled = !locked,
@@ -82,6 +126,32 @@ fun SettingsScreen(onBack: () -> Unit, onOpenBackup: () -> Unit) {
 
             HorizontalDivider()
             SettingsSectionTitle("Playback")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Loop new sounds by default",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        text = "Applies only to newly added sounds",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+
+                Switch(
+                    checked = defaultLoop,
+                    onCheckedChange = { enabled ->
+                        scope.launch {
+                            app.repository.setDefaultLoop(enabled)
+                        }
+                    },
+                    enabled = !locked,
+                )
+            }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text("Allow simultaneous playback", modifier = Modifier.weight(1f))
                 Switch(checked = simultaneous, enabled = !locked, onCheckedChange = { allow ->
@@ -94,13 +164,33 @@ fun SettingsScreen(onBack: () -> Unit, onOpenBackup: () -> Unit) {
 
             HorizontalDivider()
             SettingsSectionTitle("Default fade for new sounds")
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                FadeSettingCard("Fade-in", fadeIn, !locked, Modifier.weight(1f)) { editingFadeIn = true }
-                FadeSettingCard("Fade-out", fadeOut, !locked, Modifier.weight(1f)) { editingFadeIn = false }
-            }
+
+            FadeSettingSlider(
+                label = "Fade-in",
+                durationMs = fadeIn,
+                enabled = !locked,
+                onDurationChange = { duration ->
+                    scope.launch { app.repository.setDefaultFade(true, duration) }
+                },
+            )
+
+            FadeSettingSlider(
+                label = "Fade-out",
+                durationMs = fadeOut,
+                enabled = !locked,
+                onDurationChange = { duration ->
+                    scope.launch { app.repository.setDefaultFade(false, duration) }
+                },
+            )
 
             HorizontalDivider()
             SettingsSectionTitle("Appearance")
+
+            Text(
+                text = "Theme",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -128,25 +218,38 @@ fun SettingsScreen(onBack: () -> Unit, onOpenBackup: () -> Unit) {
                     }
                 }
             }
-            HorizontalDivider()
-            SettingsSectionTitle("Backup & Restore")
-            OutlinedButton(onClick = onOpenBackup, enabled = !locked) {
-                Text("Open Backup & Restore")
-            }
-        }
-    }
 
-    val fadeBeingEdited = editingFadeIn
-    if (fadeBeingEdited != null && !locked) {
-        FadeSettingDialog(
-            label = if (fadeBeingEdited) "Fade-in" else "Fade-out",
-            durationMs = if (fadeBeingEdited) fadeIn else fadeOut,
-            onDismiss = { editingFadeIn = null },
-            onConfirm = { duration ->
-                editingFadeIn = null
-                scope.launch { app.repository.setDefaultFade(fadeBeingEdited, duration) }
-            },
-        )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Default sound button size",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+
+            Text(
+                text = "Level ${rowHeightSlider.toInt().coerceIn(1, 5)} of 5",
+                style = MaterialTheme.typography.labelMedium,
+            )
+
+            Slider(
+                value = rowHeightSlider,
+                onValueChange = { value ->
+                    rowHeightSlider = value
+                },
+                onValueChangeFinished = {
+                    if (!locked) {
+                        val level = rowHeightSlider.toInt().coerceIn(1, 5)
+                        scope.launch {
+                            app.repository.setDefaultRowHeightLevel(level)
+                        }
+                    }
+                },
+                valueRange = 1f..5f,
+                steps = 3,
+                enabled = !locked,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
 
@@ -160,50 +263,41 @@ private fun SettingsSectionTitle(title: String) {
 }
 
 @Composable
-private fun FadeSettingCard(
+private fun FadeSettingSlider(
     label: String,
     durationMs: Int,
     enabled: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
+    onDurationChange: (Int) -> Unit,
 ) {
-    OutlinedCard(
-        modifier = modifier,
-        onClick = onClick,
-        enabled = enabled,
-    ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(label, style = MaterialTheme.typography.labelMedium)
-            Text(formatFade(durationMs), style = MaterialTheme.typography.titleMedium)
-        }
+    var sliderValue by remember {
+        mutableFloatStateOf(durationMs.toFloat())
     }
-}
 
-@Composable
-private fun FadeSettingDialog(
-    label: String,
-    durationMs: Int,
-    onDismiss: () -> Unit,
-    onConfirm: (Int) -> Unit,
-) {
-    var value by remember(durationMs) { mutableFloatStateOf(durationMs.coerceIn(0, 5000).toFloat()) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(label) },
-        text = {
-            Column {
-                Text(formatFade(value.toInt()), style = MaterialTheme.typography.titleMedium)
-                Slider(
-                    value = value,
-                    onValueChange = { value = (it / 500f).toInt().coerceIn(0, 10) * 500f },
-                    valueRange = 0f..5000f,
-                    steps = 9,
-                )
-            }
-        },
-        confirmButton = { TextButton(onClick = { onConfirm(value.toInt()) }) { Text("OK") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
+    LaunchedEffect(durationMs) {
+        sliderValue = durationMs.toFloat()
+    }
+
+    Column {
+        Text(
+            text = "$label: ${formatFade(sliderValue.toInt())}",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+
+        Slider(
+            value = sliderValue,
+            onValueChange = { sliderValue = it },
+            onValueChangeFinished = {
+                val duration =
+                    ((sliderValue / 500f).toInt() * 500)
+                        .coerceIn(0, 5000)
+                onDurationChange(duration)
+            },
+            valueRange = 0f..5000f,
+            steps = 9,
+            enabled = enabled,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }
 
 private fun formatFade(durationMs: Int): String =

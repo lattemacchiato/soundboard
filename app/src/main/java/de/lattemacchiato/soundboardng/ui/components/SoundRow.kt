@@ -35,6 +35,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import de.lattemacchiato.soundboardng.R
 import de.lattemacchiato.soundboardng.ui.SoundRowState
@@ -57,6 +58,7 @@ fun SoundRow(
     onLongPress: () -> Unit,
     modifier: Modifier = Modifier,
     locked: Boolean = false,
+    minHeight: Dp = 64.dp,
 ) {
     Card(
         shape = RoundedCornerShape(CORNER_RADIUS),
@@ -72,12 +74,17 @@ fun SoundRow(
         modifier =
             modifier
                 .fillMaxWidth()
+                .heightIn(min = minHeight)
                 .combinedClickable(onClick = onToggle, onLongClick = if (locked) null else onLongPress),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = minHeight)
+                    .padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -89,9 +96,13 @@ fun SoundRow(
 
                 val fadeInMs = row.sound.fadeInMs
                 val fadeOutMs = row.sound.fadeOutMs
+                val loop = row.sound.loop
 
-                if (fadeInMs > 0 || fadeOutMs > 0) {
-                    val fadeLabel = buildList {
+                val playbackLabel =
+                    buildList {
+                        if (loop) {
+                            add("↻")
+                        }
                         if (fadeInMs > 0) {
                             add("↑ ${formatFadeDuration(fadeInMs)}")
                         }
@@ -100,8 +111,9 @@ fun SoundRow(
                         }
                     }.joinToString(" · ")
 
+                if (playbackLabel.isNotEmpty()) {
                     Text(
-                        text = fadeLabel,
+                        text = playbackLabel,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
@@ -132,9 +144,10 @@ fun SoundRow(
 
             FilledTonalIconButton(
                 onClick = onRestart,
-                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                ),
+                colors =
+                    IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                    ),
                 modifier = Modifier.size(48.dp),
             ) {
                 Icon(Icons.Filled.Replay, contentDescription = "Restart ${row.sound.name}")
@@ -211,9 +224,11 @@ private fun VolumePill(
         }
     }
 }
+
 private fun formatFadeDuration(durationMs: Int): String {
     val seconds = durationMs / 1000
     val halfSecond = durationMs % 1000 >= 500
     return if (halfSecond) "$seconds.5s" else "${seconds}s"
 }
+
 private val CORNER_RADIUS = 24.dp

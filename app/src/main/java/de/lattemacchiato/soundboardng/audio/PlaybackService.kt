@@ -73,8 +73,7 @@ class PlaybackService : Service() {
                 engine.statuses
                     .map { statuses ->
                         statuses.count { it.value == PlaybackStatus.PLAYING }
-                    }
-                    .collect { count ->
+                    }.collect { count ->
                         if (count == 0) {
                             stopSelf()
                         } else {
