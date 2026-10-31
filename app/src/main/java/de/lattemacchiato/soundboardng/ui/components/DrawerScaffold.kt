@@ -22,6 +22,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.net.toUri
 import de.lattemacchiato.soundboardng.R
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 
 /**
  * The chrome every destination shares: a top bar whose navigation icon opens
@@ -38,6 +44,7 @@ fun DrawerScaffold(
     onOpenDrawer: () -> Unit,
     modifier: Modifier = Modifier,
     menuEnabled: Boolean = true,
+    onTitleClick: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
     floatingActionButton: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
@@ -46,7 +53,26 @@ fun DrawerScaffold(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text(title ?: stringResource(titleRes)) },
+                title = {
+                    val titleText = title ?: stringResource(titleRes)
+
+                    if (onTitleClick != null && menuEnabled) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.clickable(onClick = onTitleClick),
+                        ) {
+                            Text(titleText)
+                            Icon(
+                                imageVector = Icons.Filled.KeyboardArrowDown,
+                                contentDescription = null,
+                                modifier = Modifier.padding(top = 2.dp),
+                            )
+                        }
+                    } else {
+                        Text(titleText)
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onOpenDrawer, enabled = menuEnabled) {
                         Icon(

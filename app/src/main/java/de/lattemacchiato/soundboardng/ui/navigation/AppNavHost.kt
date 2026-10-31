@@ -37,6 +37,7 @@ fun AppNavHost(
     onCreateBoard: () -> Unit,
     onRenameBoard: () -> Unit,
     onDeleteBoard: () -> Unit,
+    onChooseBoard: () -> Unit,
     onReturnToDrawer: () -> Unit,
     onOpenBackup: () -> Unit,
     onExitRequested: () -> Unit,
@@ -59,7 +60,10 @@ fun AppNavHost(
     ) {
         composable(Destination.Soundboard.route) {
             BackHandler(onBack = onExitRequested)
-            SoundboardScreen(onOpenDrawer = onOpenDrawer)
+            SoundboardScreen(
+                onOpenDrawer = onOpenDrawer,
+                onChooseBoard = onChooseBoard,
+            )
         }
         composable(Destination.About.route) {
             BackHandler(onBack = onReturnToDrawer)

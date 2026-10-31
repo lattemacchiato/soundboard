@@ -47,7 +47,27 @@ fun BoardSelectorScreen(
                 )
             }
             item {
-                TextButton(onClick = onCreate, enabled = !locked) { Text("+ New board") }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Button(
+                        onClick = onCreate,
+                        enabled = !locked,
+                    ) {
+                        Text("New board")
+                    }
+
+                    HorizontalDivider()
+
+                    Text(
+                        text = "${boards.size} boards total",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }
@@ -65,7 +85,7 @@ fun BoardManagementScreen(
     onDelete: () -> Unit,
     onBack: () -> Unit,
 ) {
-    NavigationPage("Manage boards", onBack) { padding ->
+    NavigationPage("Manage board", onBack) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -74,6 +94,7 @@ fun BoardManagementScreen(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text("Board:", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(
@@ -151,13 +172,6 @@ fun BoardManagementScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            HorizontalDivider()
-
-            Text("Create board", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-            Button(onClick = onCreate, enabled = !locked) { Text("New board") }
-
-            HorizontalDivider()
-            Text("${boards.size} boards total", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

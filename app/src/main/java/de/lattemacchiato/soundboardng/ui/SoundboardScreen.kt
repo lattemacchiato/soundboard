@@ -63,6 +63,7 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 @Composable
 fun SoundboardScreen(
     onOpenDrawer: () -> Unit,
+    onChooseBoard: () -> Unit,
     viewModel: SoundboardViewModel = viewModel(factory = SoundboardViewModel.Factory),
 ) {
     val rows by viewModel.rows.collectAsStateWithLifecycle()
@@ -125,6 +126,7 @@ fun SoundboardScreen(
         titleRes = if (rearranging) R.string.rearrange_title else R.string.app_name,
         title = if (rearranging) null else activeBoardName,
         onOpenDrawer = onOpenDrawer,
+        onTitleClick = if (!locked && !rearranging) onChooseBoard else null,
         menuEnabled = !locked,
         actions = {
             if (rows.isNotEmpty() && !locked) {

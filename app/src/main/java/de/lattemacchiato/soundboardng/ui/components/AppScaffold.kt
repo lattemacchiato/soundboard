@@ -69,6 +69,7 @@ fun AppScaffold() {
     var editor by remember { mutableStateOf<BoardEditor?>(null) }
     var deleteBoardId by remember { mutableStateOf<String?>(null) }
     var confirmExit by remember { mutableStateOf(false) }
+    var boardSelectorOpenedFromTitle by remember { mutableStateOf(false) }
     val playbackStatuses by app.engine.statuses.collectAsState()
 
     fun exitAndStop() {
@@ -116,6 +117,11 @@ fun AppScaffold() {
 
     fun openDestination(destination: Destination) {
         if (locked && destination !in listOf(Destination.About, Destination.Licenses)) return
+
+        if (destination == Destination.BoardSelector) {
+            boardSelectorOpenedFromTitle = false
+        }
+
         scope.launch { drawerState.close() }
         navController.navigate(destination.route) {
             popUpTo(navController.graph.findStartDestination().id) { saveState = true }
@@ -135,18 +141,13 @@ fun AppScaffold() {
                     modifier = Modifier.padding(horizontal = 28.dp, vertical = 20.dp),
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp))
-                Text(
-                    text = "CURRENT BOARD",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 28.dp, top = 16.dp, bottom = 4.dp),
-                )
                 NavigationDrawerItem(
                     label = {
                         Column {
-                            Text(boards.firstOrNull { it.id == activeBoardId }?.name ?: "No board selected")
+                            Text("Choose Board")
                             Text(
-                                "Choose board",
+                                text = boards.firstOrNull { it.id == activeBoardId }?.name
+                                    ?: "No board selected",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -159,7 +160,7 @@ fun AppScaffold() {
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                 )
                 NavigationDrawerItem(
-                    label = { Text("Manage boards") },
+                    label = { Text("Manage board") },
                     icon = { Icon(Icons.Filled.FolderOpen, contentDescription = null) },
                     selected = false,
                     onClick = { openDestination(Destination.BoardManagement) },
@@ -190,6 +191,14 @@ fun AppScaffold() {
         AppNavHost(
             navController = navController,
             onOpenDrawer = { if (!locked) scope.launch { drawerState.open() } },
+            onChooseBoard = {
+                if (!locked) {
+                    boardSelectorOpenedFromTitle = true
+                    navController.navigate(Destination.BoardSelector.route) {
+                        launchSingleTop = true
+                    }
+                }
+            },
             onSelectBoard = { id ->
                 scope.launch {
                     switchToBoard(id)
@@ -208,9 +217,14 @@ fun AppScaffold() {
                 }
             },
             onReturnToDrawer = {
-                if (navController.popBackStack()) {
+                val fromTitle = currentRoute == Destination.BoardSelector.route &&
+                    boardSelectorOpenedFromTitle
+
+                if (navController.popBackStack() && !fromTitle) {
                     scope.launch { drawerState.open() }
                 }
+
+                boardSelectorOpenedFromTitle = false
             },
         )
     }
