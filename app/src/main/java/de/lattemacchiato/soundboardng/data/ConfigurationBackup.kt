@@ -56,7 +56,7 @@ class ConfigurationBackup(private val context: Context, private val repository: 
             throw IllegalArgumentException("Not a valid soundboard configuration backup", e)
         }
         require(envelope.format == FORMAT && envelope.version == VERSION) { "Unsupported backup format or version" }
-        validate(envelope.library)
+        ConfigurationValidator.validate(envelope.library)
         val missing = envelope.library.boards.flatMap { it.sounds }.filter { sound ->
             try {
                 resolver.openFileDescriptor(Uri.parse(sound.uri), "r")?.use { } == null
@@ -69,7 +69,7 @@ class ConfigurationBackup(private val context: Context, private val repository: 
 
     /** Save a private recovery copy before replacing DataStore; retain it after success. */
     suspend fun restore(preview: BackupPreview) = withContext(Dispatchers.IO) {
-        validate(preview.library)
+        ConfigurationValidator.validate(preview.library)
         val previous = repository.snapshot()
         val recovery = File(context.filesDir, "soundboard-before-import.json")
         val tmp = File(context.filesDir, "soundboard-before-import.json.tmp")
@@ -81,22 +81,6 @@ class ConfigurationBackup(private val context: Context, private val repository: 
             if (!tmp.renameTo(recovery)) error("Cannot save pre-import recovery backup")
             repository.restore(preview.library)
         } finally { tmp.delete() }
-    }
-
-    private fun validate(library: SoundLibrary) {
-        require(library.boards.isNotEmpty() && library.boards.size <= 1000) { "Invalid board count" }
-        require(library.boards.map { it.id }.all { it.isNotBlank() } &&
-            library.boards.map { it.id }.distinct().size == library.boards.size) { "Invalid board IDs" }
-        require(library.boards.any { it.id == library.activeBoardId }) { "Active board not found" }
-        require(library.defaultFadeInMs in 0..5000 && library.defaultFadeOutMs in 0..5000) { "Invalid default fade" }
-        require(library.boards.all { board ->
-            board.name.isNotBlank() && board.sounds.size <= 10000 &&
-                board.sounds.map { it.id }.distinct().size == board.sounds.size &&
-                board.sounds.all { sound ->
-                    sound.id.isNotBlank() && sound.name.isNotBlank() && sound.uri.startsWith("content://") &&
-                        sound.volumePercent in 0..100 && sound.fadeInMs in 0..5000 && sound.fadeOutMs in 0..5000
-                }
-        }) { "Invalid sound data" }
     }
 
     companion object {
