@@ -2,6 +2,7 @@ package de.lattemacchiato.soundboardng.audio
 
 import android.content.Context
 import android.media.AudioManager
+import android.os.SystemClock
 import androidx.annotation.MainThread
 import androidx.core.net.toUri
 import androidx.media3.common.AudioAttributes
@@ -17,11 +18,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import android.os.SystemClock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 /**
  * Mixes any number of looping sounds, each with its own gain.
@@ -55,7 +55,11 @@ class SoundboardEngine(
     fun setAllowSimultaneousPlayback(allow: Boolean) {
         allowSimultaneousPlayback = allow
         if (!allow) {
-            val playing = _statuses.value.filterValues { it == PlaybackStatus.PLAYING }.keys.toList()
+            val playing =
+                _statuses.value
+                    .filterValues { it == PlaybackStatus.PLAYING }
+                    .keys
+                    .toList()
             // Preserve one currently playing sound when switching modes.
             playing.drop(1).forEach(::stopImmediately)
         }
@@ -68,9 +72,12 @@ class SoundboardEngine(
 
     private fun stopOtherPlayingSounds(exceptId: String) {
         if (allowSimultaneousPlayback) return
-        _statuses.value.filter { (id, status) ->
-            id != exceptId && status == PlaybackStatus.PLAYING
-        }.keys.toList().forEach(::stopImmediately)
+        _statuses.value
+            .filter { (id, status) ->
+                id != exceptId && status == PlaybackStatus.PLAYING
+            }.keys
+            .toList()
+            .forEach(::stopImmediately)
     }
 
     fun isFadingOut(id: String): Boolean = id in fadingOut
@@ -84,7 +91,12 @@ class SoundboardEngine(
         players[id]?.volume = (gains[id] ?: 1f) * duckFactor * (fadeFactors[id] ?: 1f)
     }
 
-    private fun animateFade(id: String, target: Float, durationMs: Int, finished: () -> Unit = {}) {
+    private fun animateFade(
+        id: String,
+        target: Float,
+        durationMs: Int,
+        finished: () -> Unit = {},
+    ) {
         cancelFade(id)
         if (target == 0f) fadingOut.add(id)
         val start = fadeFactors[id] ?: 1f
@@ -96,19 +108,20 @@ class SoundboardEngine(
             finished()
             return
         }
-        fadeJobs[id] = fadeScope.launch {
-            val startTime = SystemClock.uptimeMillis()
-            while (true) {
-                val fraction = ((SystemClock.uptimeMillis() - startTime).toFloat() / duration).coerceIn(0f, 1f)
-                fadeFactors[id] = start + (target - start) * fraction
-                updateVolume(id)
-                if (fraction >= 1f) break
-                delay(16L)
+        fadeJobs[id] =
+            fadeScope.launch {
+                val startTime = SystemClock.uptimeMillis()
+                while (true) {
+                    val fraction = ((SystemClock.uptimeMillis() - startTime).toFloat() / duration).coerceIn(0f, 1f)
+                    fadeFactors[id] = start + (target - start) * fraction
+                    updateVolume(id)
+                    if (fraction >= 1f) break
+                    delay(16L)
+                }
+                fadeJobs.remove(id)
+                fadingOut.remove(id)
+                finished()
             }
-            fadeJobs.remove(id)
-            fadingOut.remove(id)
-            finished()
-        }
     }
 
     /** Gains last requested by the UI, kept so ducking can be applied on top. */
@@ -175,7 +188,10 @@ class SoundboardEngine(
     }
 
     /** Apply a changed loop setting without restarting a running player. */
-    fun setLoop(id: String, loop: Boolean) {
+    fun setLoop(
+        id: String,
+        loop: Boolean,
+    ) {
         players[id]?.repeatMode = if (loop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
     }
 

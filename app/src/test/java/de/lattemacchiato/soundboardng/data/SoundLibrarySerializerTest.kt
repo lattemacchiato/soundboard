@@ -1,9 +1,9 @@
 package de.lattemacchiato.soundboardng.data
 
+import androidx.datastore.core.CorruptionException
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.fail
-import androidx.datastore.core.CorruptionException
 import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -30,7 +30,8 @@ class SoundLibrarySerializerTest {
             try {
                 SoundLibrarySerializer.readFrom(ByteArrayInputStream("{ not json".toByteArray()))
                 fail("Expected CorruptionException")
-            } catch (_: CorruptionException) {}
+            } catch (_: CorruptionException) {
+            }
         }
 
     @Test
@@ -48,25 +49,28 @@ class SoundLibrarySerializerTest {
         runTest {
             assertEquals(SoundLibrary(), SoundLibrarySerializer.readFrom(ByteArrayInputStream(ByteArray(0))))
         }
+
     @Test
     fun `legacy json without row height settings uses defaults`() =
         runTest {
-            val json = """
-            {
-                "boards": [
-                    {
-                        "id": "default",
-                        "name": "Default",
-                        "sounds": []
-                    }
-                ],
-                "activeBoardId": "default"
-            }
-        """.trimIndent()
+            val json =
+                """
+                {
+                    "boards": [
+                        {
+                            "id": "default",
+                            "name": "Default",
+                            "sounds": []
+                        }
+                    ],
+                    "activeBoardId": "default"
+                }
+                """.trimIndent()
 
-            val restored = SoundLibrarySerializer.readFrom(
-                ByteArrayInputStream(json.toByteArray())
-            )
+            val restored =
+                SoundLibrarySerializer.readFrom(
+                    ByteArrayInputStream(json.toByteArray()),
+                )
 
             assertEquals(1, restored.defaultRowHeightLevel)
             assertEquals(null, restored.boards.first().rowHeightLevel)
@@ -76,18 +80,22 @@ class SoundLibrarySerializerTest {
     @Test
     fun `row height settings survive serialization round trip`() =
         runTest {
-            val original = SoundLibrary()
-                .withDefaultRowHeightLevel(3)
-                .withBoard("board2", "Second board")
-                .withBoardRowHeightLevel("board2", 5)
+            val original =
+                SoundLibrary()
+                    .withDefaultRowHeightLevel(3)
+                    .withBoard("board2", "Second board")
+                    .withBoardRowHeightLevel("board2", 5)
 
-            val bytes = ByteArrayOutputStream().also {
-                SoundLibrarySerializer.writeTo(original, it)
-            }.toByteArray()
+            val bytes =
+                ByteArrayOutputStream()
+                    .also {
+                        SoundLibrarySerializer.writeTo(original, it)
+                    }.toByteArray()
 
-            val restored = SoundLibrarySerializer.readFrom(
-                ByteArrayInputStream(bytes)
-            )
+            val restored =
+                SoundLibrarySerializer.readFrom(
+                    ByteArrayInputStream(bytes),
+                )
 
             assertEquals(original, restored)
             assertEquals(3, restored.defaultRowHeightLevel)
@@ -101,9 +109,10 @@ class SoundLibrarySerializerTest {
         runTest {
             val json = """{"sounds":[]}"""
 
-            val restored = SoundLibrarySerializer.readFrom(
-                ByteArrayInputStream(json.toByteArray())
-            )
+            val restored =
+                SoundLibrarySerializer.readFrom(
+                    ByteArrayInputStream(json.toByteArray()),
+                )
 
             assertEquals(true, restored.defaultLoop)
         }
@@ -111,21 +120,24 @@ class SoundLibrarySerializerTest {
     @Test
     fun `default loop survives serialization round trip`() =
         runTest {
-            val original = SoundLibrary()
-                .withDefaultLoop(false)
-                .withSound("a", "content://a", "Sound A")
+            val original =
+                SoundLibrary()
+                    .withDefaultLoop(false)
+                    .withSound("a", "content://a", "Sound A")
 
-            val bytes = ByteArrayOutputStream().also {
-                SoundLibrarySerializer.writeTo(original, it)
-            }.toByteArray()
+            val bytes =
+                ByteArrayOutputStream()
+                    .also {
+                        SoundLibrarySerializer.writeTo(original, it)
+                    }.toByteArray()
 
-            val restored = SoundLibrarySerializer.readFrom(
-                ByteArrayInputStream(bytes)
-            )
+            val restored =
+                SoundLibrarySerializer.readFrom(
+                    ByteArrayInputStream(bytes),
+                )
 
             assertEquals(original, restored)
             assertEquals(false, restored.defaultLoop)
             assertEquals(false, restored.sounds.first().loop)
         }
-
 }

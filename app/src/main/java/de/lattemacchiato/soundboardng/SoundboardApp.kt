@@ -2,8 +2,8 @@ package de.lattemacchiato.soundboardng
 
 import android.app.Application
 import de.lattemacchiato.soundboardng.audio.SoundboardEngine
-import de.lattemacchiato.soundboardng.data.SoundRepository
 import de.lattemacchiato.soundboardng.data.LockSettings
+import de.lattemacchiato.soundboardng.data.SoundRepository
 
 /**
  * Process-wide holder for the engine and repository.

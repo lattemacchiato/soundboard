@@ -11,8 +11,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.core.DataStoreFactory
 import androidx.datastore.dataStoreFile
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import java.util.UUID
 
 /**
@@ -56,7 +56,10 @@ class SoundRepository(
         store.updateData { it.withAllowSimultaneousPlayback(allow) }
     }
 
-    suspend fun setDefaultFade(fadeIn: Boolean, durationMs: Int) {
+    suspend fun setDefaultFade(
+        fadeIn: Boolean,
+        durationMs: Int,
+    ) {
         store.updateData { it.withDefaultFade(fadeIn, durationMs) }
     }
 
@@ -70,11 +73,18 @@ class SoundRepository(
     }
 
     /** Updates a board-specific level; null means inherit global default. */
-    suspend fun setBoardRowHeightLevel(boardId: String, level: Int?) {
+    suspend fun setBoardRowHeightLevel(
+        boardId: String,
+        level: Int?,
+    ) {
         store.updateData { it.withBoardRowHeightLevel(boardId, level) }
     }
 
-    suspend fun setFade(id: String, fadeIn: Boolean, durationMs: Int) {
+    suspend fun setFade(
+        id: String,
+        fadeIn: Boolean,
+        durationMs: Int,
+    ) {
         store.updateData { it.withFade(id, fadeIn, durationMs) }
     }
 
@@ -82,7 +92,10 @@ class SoundRepository(
         store.updateData { it.withDefaultTapBehavior(behavior) }
     }
 
-    suspend fun setTapBehavior(id: String, behavior: TapBehavior) {
+    suspend fun setTapBehavior(
+        id: String,
+        behavior: TapBehavior,
+    ) {
         store.updateData { it.withTapBehavior(id, behavior) }
     }
 
@@ -97,7 +110,10 @@ class SoundRepository(
         store.updateData { it.selectedBoard(id) }
     }
 
-    suspend fun renameBoard(id: String, name: String) {
+    suspend fun renameBoard(
+        id: String,
+        name: String,
+    ) {
         store.updateData { it.renamedBoard(id, name) }
     }
 
@@ -111,7 +127,6 @@ class SoundRepository(
         }
         releasedUris.forEach { releaseUriPermission(it.toUri()) }
     }
-
 
     /**
      * Adds a picked document to the board, persisting read access to it.
@@ -167,7 +182,10 @@ class SoundRepository(
         releasedUris.forEach { releaseUriPermission(it.toUri()) }
     }
 
-    suspend fun setLoop(id: String, loop: Boolean) {
+    suspend fun setLoop(
+        id: String,
+        loop: Boolean,
+    ) {
         store.updateData { it.withLoop(id, loop) }
     }
 

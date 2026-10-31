@@ -4,20 +4,20 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.LocalContext
-import de.lattemacchiato.soundboardng.SoundboardApp
-import de.lattemacchiato.soundboardng.ui.components.BoardSelectorScreen
-import de.lattemacchiato.soundboardng.ui.components.BoardManagementScreen
-import de.lattemacchiato.soundboardng.ui.components.SettingsScreen
-import de.lattemacchiato.soundboardng.ui.components.BackupRestoreScreen
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import de.lattemacchiato.soundboardng.SoundboardApp
 import de.lattemacchiato.soundboardng.ui.SoundboardScreen
 import de.lattemacchiato.soundboardng.ui.about.AboutScreen
 import de.lattemacchiato.soundboardng.ui.about.LicensesScreen
+import de.lattemacchiato.soundboardng.ui.components.BackupRestoreScreen
+import de.lattemacchiato.soundboardng.ui.components.BoardManagementScreen
+import de.lattemacchiato.soundboardng.ui.components.BoardSelectorScreen
+import de.lattemacchiato.soundboardng.ui.components.SettingsScreen
 import kotlinx.coroutines.launch
 
 /**

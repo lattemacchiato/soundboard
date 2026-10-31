@@ -17,8 +17,9 @@ object SoundLibrarySerializer : Serializer<SoundLibrary> {
         val bytes = input.readBytes()
         if (bytes.isEmpty()) return defaultValue
         try {
-            val document = json.parseToJsonElement(bytes.decodeToString()) as? JsonObject
-                ?: throw SerializationException("Expected JSON object")
+            val document =
+                json.parseToJsonElement(bytes.decodeToString()) as? JsonObject
+                    ?: throw SerializationException("Expected JSON object")
             // Legacy format: {"sounds":[...]}. Keep every sound and its original URI.
             if ("boards" !in document && "sounds" in document) {
                 val sounds = json.decodeFromJsonElement<List<Sound>>(document.getValue("sounds"))
@@ -26,10 +27,15 @@ object SoundLibrarySerializer : Serializer<SoundLibrary> {
             }
             val library = json.decodeFromJsonElement<SoundLibrary>(document)
             if (library.boards.isEmpty() ||
-                library.boards.map { it.id }.distinct().size != library.boards.size ||
+                library.boards
+                    .map { it.id }
+                    .distinct()
+                    .size != library.boards.size ||
                 library.boards.any { it.id.isBlank() } ||
                 library.boards.none { it.id == library.activeBoardId }
-            ) throw SerializationException("Invalid board structure")
+            ) {
+                throw SerializationException("Invalid board structure")
+            }
             return library
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
@@ -37,7 +43,10 @@ object SoundLibrarySerializer : Serializer<SoundLibrary> {
         }
     }
 
-    override suspend fun writeTo(t: SoundLibrary, output: OutputStream) {
+    override suspend fun writeTo(
+        t: SoundLibrary,
+        output: OutputStream,
+    ) {
         output.write(json.encodeToString(SoundLibrary.serializer(), t).encodeToByteArray())
     }
 }
