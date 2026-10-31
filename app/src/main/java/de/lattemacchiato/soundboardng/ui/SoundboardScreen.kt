@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -71,7 +72,7 @@ fun SoundboardScreen(
     val locked by viewModel.locked.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // added for soudboard title
+    // added for soundboard title
     val app = context.applicationContext as de.lattemacchiato.soundboardng.SoundboardApp
     val boards by app.repository.boards.collectAsStateWithLifecycle(initialValue = emptyList())
     val activeBoardId by app.repository.activeBoardId.collectAsStateWithLifecycle(initialValue = "default")
@@ -210,7 +211,38 @@ fun SoundboardScreen(
     if (!locked) optionsTarget?.let { sound ->
         ModalBottomSheet(onDismissRequest = { optionsTarget = null }) {
             val currentSound = rows.firstOrNull { it.sound.id == sound.id }?.sound ?: sound
-            ListItem(headlineContent = { Text(sound.name) })
+            ListItem(
+                headlineContent = { Text(sound.name) },
+                trailingContent = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        IconButton(
+                            onClick = {
+                                optionsTarget = null
+                                renameTarget = sound
+                            },
+                        ) {
+                            Icon(
+                                Icons.Filled.Edit,
+                                contentDescription = "Edit sound",
+                            )
+                        }
+
+                        IconButton(
+                            onClick = {
+                                optionsTarget = null
+                                deleteTarget = sound
+                            },
+                        ) {
+                            Icon(
+                                Icons.Filled.Delete,
+                                contentDescription = "Delete sound",
+                            )
+                        }
+                    }
+                },
+            )
             ListItem(
                 headlineContent = { Text("Loop") },
                 supportingContent = { Text(if (currentSound.loop) "Repeat continuously" else "Play once") },
@@ -258,28 +290,6 @@ fun SoundboardScreen(
             }
             FadeSlider("Fade-in", currentSound.fadeInMs) { viewModel.setFade(sound.id, true, it) }
             FadeSlider("Fade-out", currentSound.fadeOutMs) { viewModel.setFade(sound.id, false, it) }
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.edit)) },
-                leadingContent = { Icon(Icons.Filled.Edit, contentDescription = null) },
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            optionsTarget = null
-                            renameTarget = sound
-                        },
-            )
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.delete)) },
-                leadingContent = { Icon(Icons.Filled.Delete, contentDescription = null) },
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            optionsTarget = null
-                            deleteTarget = sound
-                        },
-            )
         }
     }
 
