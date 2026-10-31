@@ -39,7 +39,6 @@ fun AppNavHost(
     onDeleteBoard: () -> Unit,
     onChooseBoard: () -> Unit,
     onReturnToDrawer: () -> Unit,
-    onOpenBackup: () -> Unit,
     onExitRequested: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -100,11 +99,15 @@ fun AppNavHost(
             )
         }
         composable(Destination.BackupRestore.route) {
-            BackupRestoreScreen(onBack = { navController.popBackStack() })
+            BackHandler {
+                onReturnToDrawer()
+            }
+
+            BackupRestoreScreen(onBack = onReturnToDrawer)
         }
         composable(Destination.Settings.route) {
             BackHandler(onBack = onReturnToDrawer)
-            SettingsScreen(onBack = onReturnToDrawer, onOpenBackup = onOpenBackup)
+            SettingsScreen(onBack = onReturnToDrawer)
         }
     }
 }

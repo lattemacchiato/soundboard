@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
@@ -173,6 +174,13 @@ fun AppScaffold() {
                     onClick = { openDestination(Destination.Settings) },
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                 )
+                NavigationDrawerItem(
+                    label = { Text("Backup & Restore") },
+                    icon = { Icon(Icons.Filled.Save, contentDescription = null) },
+                    selected = false,
+                    onClick = { openDestination(Destination.BackupRestore) },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp))
                 listOf(Destination.About, Destination.Licenses).forEach { destination ->
                     NavigationDrawerItem(
@@ -208,7 +216,6 @@ fun AppScaffold() {
             onCreateBoard = { if (!locked) editor = BoardEditor.Create },
             onRenameBoard = { if (!locked) editor = BoardEditor.Rename(activeBoardId, boards.firstOrNull { it.id == activeBoardId }?.name.orEmpty()) },
             onDeleteBoard = { if (!locked && boards.size > 1) deleteBoardId = activeBoardId },
-            onOpenBackup = { if (!locked) navController.navigate(Destination.BackupRestore.route) },
             onExitRequested = {
                 if (playbackStatuses.values.any { it == PlaybackStatus.PLAYING || it == PlaybackStatus.PAUSED }) {
                     confirmExit = true
