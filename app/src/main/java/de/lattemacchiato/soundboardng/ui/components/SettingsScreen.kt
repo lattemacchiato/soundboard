@@ -152,6 +152,12 @@ fun SettingsScreen(onBack: () -> Unit, onOpenBackup: () -> Unit) {
 
             HorizontalDivider()
             SettingsSectionTitle("Appearance")
+
+            Text(
+                text = "Theme",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -179,6 +185,8 @@ fun SettingsScreen(onBack: () -> Unit, onOpenBackup: () -> Unit) {
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = "Default sound button size",
