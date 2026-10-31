@@ -1,0 +1,15 @@
+Features:
+
+- add configurable sound button size with per-board overrides
+- add global default loop setting for new sounds
+- improve board navigation and selection UX
+- improve theme settings layout
+- move backup and restore to navigation drawer
+- move sound edit and delete actions to sheet header
+- show loop indicator on sound rows
+- streamline board management UI and deletion navigation
+- unify about and licenses back navigation
+
+Bug Fixes:
+
+- accept restored audio file URIs in configuration ba
