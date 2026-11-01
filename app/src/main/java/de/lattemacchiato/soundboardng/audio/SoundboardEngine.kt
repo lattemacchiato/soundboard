@@ -3,6 +3,7 @@ package de.lattemacchiato.soundboardng.audio
 import android.content.Context
 import android.media.AudioManager
 import android.os.SystemClock
+import android.util.Log
 import androidx.annotation.MainThread
 import androidx.core.net.toUri
 import androidx.media3.common.AudioAttributes
@@ -11,7 +12,9 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import de.lattemacchiato.soundboardng.data.PlaybackOrder
 import de.lattemacchiato.soundboardng.data.Sound
+import de.lattemacchiato.soundboardng.data.SoundType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -22,6 +25,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Mixes any number of looping sounds, each with its own gain.
@@ -44,6 +48,9 @@ class SoundboardEngine(
     private val context: Context,
 ) {
     private val players = mutableMapOf<String, ExoPlayer>()
+    private val soundTypes = mutableMapOf<String, SoundType>()
+    private val folderResolver = FolderAudioResolver(context.contentResolver)
+    private val folderLoadJobs = mutableMapOf<String, Job>()
     private val fadeScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val fadeJobs = mutableMapOf<String, Job>()
     private val fadeFactors = mutableMapOf<String, Float>()
@@ -146,8 +153,33 @@ class SoundboardEngine(
         get() = _statuses.value.any { it.value == PlaybackStatus.PLAYING }
 
     fun play(sound: Sound) {
+        if (folderLoadJobs[sound.id]?.isActive == true) return
+
+        if (sound.type == SoundType.FOLDER && players[sound.id] == null) {
+            loadFolder(sound) { player ->
+                gains[sound.id] = sound.gain
+                cancelFade(sound.id)
+                fadeFactors[sound.id] = 0f
+                updateVolume(sound.id)
+
+                player.repeatMode =
+                    if (sound.loop) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF
+
+                if (!focus.request()) return@loadFolder
+                stopOtherPlayingSounds(sound.id)
+                if (!focus.request()) return@loadFolder
+
+                pausedByFocusLoss.remove(sound.id)
+                player.play()
+                setStatus(sound.id, PlaybackStatus.PLAYING)
+                animateFade(sound.id, 1f, sound.fadeInMs)
+            }
+            return
+        }
+
         // A player that hit an error stays in that state and ignores play(),
         // so retrying a restored file needs a fresh one.
+
         if (_statuses.value[sound.id] == PlaybackStatus.UNAVAILABLE) {
             players.remove(sound.id)?.release()
         }
@@ -156,7 +188,12 @@ class SoundboardEngine(
         cancelFade(sound.id)
         fadeFactors[sound.id] = 0f
         updateVolume(sound.id)
-        player.repeatMode = if (sound.loop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+        player.repeatMode =
+            when {
+                !sound.loop -> Player.REPEAT_MODE_OFF
+                sound.type == SoundType.FOLDER -> Player.REPEAT_MODE_ALL
+                else -> Player.REPEAT_MODE_ONE
+            }
         if (!focus.request()) return
         stopOtherPlayingSounds(sound.id)
         if (!focus.request()) return
@@ -168,6 +205,11 @@ class SoundboardEngine(
 
     /** Start from the beginning even if this sound is currently playing or paused. */
     fun restart(sound: Sound) {
+        if (sound.type == SoundType.FOLDER && players[sound.id] == null) {
+            play(sound)
+            return
+        }
+
         if (_statuses.value[sound.id] == PlaybackStatus.UNAVAILABLE) {
             players.remove(sound.id)?.release()
         }
@@ -176,12 +218,21 @@ class SoundboardEngine(
         cancelFade(sound.id)
         fadeFactors[sound.id] = 0f
         updateVolume(sound.id)
-        player.repeatMode = if (sound.loop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+        player.repeatMode =
+            when {
+                !sound.loop -> Player.REPEAT_MODE_OFF
+                sound.type == SoundType.FOLDER -> Player.REPEAT_MODE_ALL
+                else -> Player.REPEAT_MODE_ONE
+            }
         if (!focus.request()) return
         stopOtherPlayingSounds(sound.id)
         if (!focus.request()) return
         pausedByFocusLoss.remove(sound.id)
-        player.seekTo(0L)
+        if (sound.type == SoundType.FOLDER) {
+            player.seekToDefaultPosition(0)
+        } else {
+            player.seekTo(0L)
+        }
         player.play()
         setStatus(sound.id, PlaybackStatus.PLAYING)
         animateFade(sound.id, 1f, sound.fadeInMs)
@@ -192,7 +243,12 @@ class SoundboardEngine(
         id: String,
         loop: Boolean,
     ) {
-        players[id]?.repeatMode = if (loop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+        players[id]?.repeatMode =
+            when {
+                !loop -> Player.REPEAT_MODE_OFF
+                soundTypes[id] == SoundType.FOLDER -> Player.REPEAT_MODE_ALL
+                else -> Player.REPEAT_MODE_ONE
+            }
     }
 
     private fun pauseNow(id: String) {
@@ -243,9 +299,11 @@ class SoundboardEngine(
 
     /** Releases one sound's player — call when it is removed from the board. */
     fun release(id: String) {
+        folderLoadJobs.remove(id)?.cancel()
         cancelFade(id)
         fadeFactors.remove(id)
         players.remove(id)?.release()
+        soundTypes.remove(id)
         gains.remove(id)
         pausedByFocusLoss.remove(id)
         _statuses.value = _statuses.value - id
@@ -254,6 +312,9 @@ class SoundboardEngine(
 
     /** Releases everything. The engine is unusable afterwards. */
     fun releaseAll() {
+        folderLoadJobs.values.toList().forEach { it.cancel() }
+        folderLoadJobs.clear()
+
         fadeJobs.values.toList().forEach { it.cancel() }
         fadeJobs.clear()
         fadeFactors.clear()
@@ -261,14 +322,67 @@ class SoundboardEngine(
         fadeScope.cancel()
         players.values.forEach(ExoPlayer::release)
         players.clear()
+        soundTypes.clear()
         gains.clear()
         pausedByFocusLoss.clear()
         _statuses.value = emptyMap()
         focus.abandon()
     }
 
-    private fun buildPlayer(sound: Sound): ExoPlayer =
-        ExoPlayer
+    private fun loadFolder(
+        sound: Sound,
+        onReady: (ExoPlayer) -> Unit,
+    ) {
+        if (folderLoadJobs[sound.id]?.isActive == true) return
+
+        val job = fadeScope.launch {
+            try {
+                val files = withContext(Dispatchers.IO) {
+                    folderResolver.resolve(sound.uri.toUri())
+                }
+
+                if (files.isEmpty()) {
+                    Log.w(
+                        "SoundboardEngine",
+                        "Folder contains no supported audio files: ${sound.name}",
+                    )
+                    setStatus(sound.id, PlaybackStatus.UNAVAILABLE)
+                    return@launch
+                }
+
+                val orderedFiles = when (sound.playbackOrder) {
+                    PlaybackOrder.ALPHABETICAL -> files
+                    PlaybackOrder.SHUFFLE -> files.shuffled()
+                }
+
+                val player = buildPlayer(sound)
+                players[sound.id] = player
+                player.setMediaItems(orderedFiles.map { MediaItem.fromUri(it.uri) })
+                player.prepare()
+                onReady(player)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("SoundboardEngine", "Failed to load folder: ${sound.name}", e)
+                players.remove(sound.id)?.release()
+                soundTypes.remove(sound.id)
+                setStatus(sound.id, PlaybackStatus.UNAVAILABLE)
+            } finally {
+                if (folderLoadJobs[sound.id] ===
+                    kotlinx.coroutines.currentCoroutineContext()[Job]
+                ) {
+                    folderLoadJobs.remove(sound.id)
+                }
+            }
+        }
+
+        folderLoadJobs[sound.id] = job
+    }
+
+    private fun buildPlayer(sound: Sound): ExoPlayer {
+        soundTypes[sound.id] = sound.type
+
+        return ExoPlayer
             .Builder(context)
             .build()
             .apply {
@@ -282,10 +396,33 @@ class SoundboardEngine(
                     // one request for the whole engine. See AudioFocusHolder.
                     false,
                 )
-                repeatMode = if (sound.loop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
-                setMediaItem(MediaItem.fromUri(sound.uri.toUri()))
+                repeatMode =
+                    if (sound.loop) {
+                        if (sound.type == SoundType.FOLDER) Player.REPEAT_MODE_ALL
+                        else Player.REPEAT_MODE_ONE
+                    } else {
+                        Player.REPEAT_MODE_OFF
+                    }
+
+                if (sound.type == SoundType.FILE) {
+                    setMediaItem(MediaItem.fromUri(sound.uri.toUri()))
+                }
                 addListener(
                     object : Player.Listener {
+                        override fun onMediaItemTransition(
+                            mediaItem: MediaItem?,
+                            reason: Int,
+                        ) {
+                            if (sound.type != SoundType.FOLDER) return
+                            if (sound.playbackOrder != PlaybackOrder.SHUFFLE) return
+                            if (reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) return
+
+                            Log.d(
+                                "SoundboardEngine",
+                                "Shuffle playlist loop: ${sound.name}",
+                            )
+                        }
+
                         override fun onPlaybackStateChanged(playbackState: Int) {
                             if (playbackState == Player.STATE_ENDED &&
                                 _statuses.value[sound.id] != PlaybackStatus.UNAVAILABLE
@@ -294,7 +431,11 @@ class SoundboardEngine(
                                 cancelFade(sound.id)
                                 fadeFactors.remove(sound.id)
                                 pause()
-                                seekTo(0L)
+                                if (sound.type == SoundType.FOLDER) {
+                                    seekToDefaultPosition(0)
+                                } else {
+                                    seekTo(0L)
+                                }
                                 pausedByFocusLoss.remove(sound.id)
                                 setStatus(sound.id, PlaybackStatus.IDLE)
                                 abandonFocusIfSilent()
@@ -310,6 +451,7 @@ class SoundboardEngine(
                 )
                 prepare()
             }
+    }
 
     private fun setStatus(
         id: String,
