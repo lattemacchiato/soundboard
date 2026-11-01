@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
@@ -32,6 +33,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -51,7 +53,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.lattemacchiato.soundboardng.R
 import de.lattemacchiato.soundboardng.audio.PlaybackService
+import de.lattemacchiato.soundboardng.data.PlaybackOrder
 import de.lattemacchiato.soundboardng.data.Sound
+import de.lattemacchiato.soundboardng.data.SoundType
 import de.lattemacchiato.soundboardng.data.TapBehavior
 import de.lattemacchiato.soundboardng.ui.components.DrawerScaffold
 import de.lattemacchiato.soundboardng.ui.components.RenameDialog
@@ -123,6 +127,14 @@ fun SoundboardScreen(
             viewModel.add(uris)
         }
 
+    // Selects a folder and persists its SAF tree URI through the repository.
+    val pickFolder =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            if (uri != null) {
+                viewModel.addFolder(uri)
+            }
+        }
+
     DrawerScaffold(
         titleRes = if (rearranging) R.string.rearrange_title else R.string.app_name,
         title = if (rearranging) null else activeBoardName,
@@ -153,8 +165,27 @@ fun SoundboardScreen(
         },
         floatingActionButton = {
             if (!rearranging && !locked) {
-                FloatingActionButton(onClick = { pickSounds.launch(arrayOf(AUDIO_MIME_TYPE)) }) {
-                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.add_sound))
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    SmallFloatingActionButton(
+                        onClick = { pickFolder.launch(null) },
+                    ) {
+                        Icon(
+                            Icons.Filled.CreateNewFolder,
+                            contentDescription = "Add folder",
+                        )
+                    }
+
+                    FloatingActionButton(
+                        onClick = { pickSounds.launch(arrayOf(AUDIO_MIME_TYPE)) },
+                    ) {
+                        Icon(
+                            Icons.Filled.Add,
+                            contentDescription = stringResource(R.string.add_sound),
+                        )
+                    }
                 }
             }
         },
@@ -256,6 +287,43 @@ fun SoundboardScreen(
                         )
                     },
                 )
+                if (currentSound.type == SoundType.FOLDER) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                    ) {
+                        Text(
+                            text = "Playback order",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+
+                        SingleChoiceSegmentedButtonRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                        ) {
+                            val orders = listOf(
+                                PlaybackOrder.ALPHABETICAL to "Alphabetical",
+                                PlaybackOrder.SHUFFLE to "Shuffle",
+                            )
+
+                            orders.forEachIndexed { index, (order, label) ->
+                                SegmentedButton(
+                                    shape = SegmentedButtonDefaults.itemShape(
+                                        index = index,
+                                        count = orders.size,
+                                    ),
+                                    selected = currentSound.playbackOrder == order,
+                                    onClick = {
+                                        viewModel.setPlaybackOrder(sound.id, order)
+                                    },
+                                    label = { Text(label) },
+                                )
+                            }
+                        }
+                    }
+                }
                 Column(
                     modifier =
                         Modifier

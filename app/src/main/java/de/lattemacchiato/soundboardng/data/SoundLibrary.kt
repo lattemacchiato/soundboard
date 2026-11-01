@@ -68,6 +68,7 @@ data class SoundLibrary(
         id: String,
         uri: String,
         name: String,
+        type: SoundType = SoundType.FILE,
     ): SoundLibrary =
         if (sounds.any { it.uri == uri }) {
             this
@@ -78,6 +79,7 @@ data class SoundLibrary(
                         id = id,
                         uri = uri,
                         name = name,
+                        type = type,
                         loop = defaultLoop,
                         tapBehavior = defaultTapBehavior,
                         fadeInMs = defaultFadeInMs,
@@ -114,6 +116,19 @@ data class SoundLibrary(
         id: String,
         loop: Boolean,
     ): SoundLibrary = withActiveSounds(sounds.map { if (it.id == id) it.copy(loop = loop) else it })
+
+    fun withPlaybackOrder(
+        id: String,
+        playbackOrder: PlaybackOrder,
+    ): SoundLibrary = withActiveSounds(
+        sounds.map {
+            if (it.id == id && it.type == SoundType.FOLDER) {
+                it.copy(playbackOrder = playbackOrder)
+            } else {
+                it
+            }
+        },
+    )
 
     fun withTapBehavior(
         id: String,
