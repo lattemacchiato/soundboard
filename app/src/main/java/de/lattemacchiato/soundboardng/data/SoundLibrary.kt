@@ -68,6 +68,7 @@ data class SoundLibrary(
         id: String,
         uri: String,
         name: String,
+        type: SoundType = SoundType.FILE,
     ): SoundLibrary =
         if (sounds.any { it.uri == uri }) {
             this
@@ -78,6 +79,7 @@ data class SoundLibrary(
                         id = id,
                         uri = uri,
                         name = name,
+                        type = type,
                         loop = defaultLoop,
                         tapBehavior = defaultTapBehavior,
                         fadeInMs = defaultFadeInMs,

@@ -100,6 +100,13 @@ class SoundboardViewModel(
         viewModelScope.launch { if (!locked.value) repository.add(uris) }
     }
 
+    fun addFolder(uri: Uri) {
+        if (locked.value) return
+        viewModelScope.launch {
+            if (!locked.value) repository.addFolder(uri)
+        }
+    }
+
     /**
      * Applies a volume change to the running mix without persisting it.
      *

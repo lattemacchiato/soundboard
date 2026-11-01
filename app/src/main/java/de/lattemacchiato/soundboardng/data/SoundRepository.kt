@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.database.sqlite.SQLiteException
 import android.net.Uri
+import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import androidx.core.net.toUri
 import androidx.datastore.core.DataStore
@@ -167,6 +168,43 @@ class SoundRepository(
     }
 
     /**
+     * Adds a folder selected through ACTION_OPEN_DOCUMENT_TREE.
+     *
+     * The persisted URI permission allows access after an app restart.
+     * Audio files inside the folder are resolved later by the playback engine.
+     */
+    suspend fun addFolder(uri: Uri) {
+        try {
+            contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION,
+            )
+        } catch (_: SecurityException) {
+            return
+        }
+
+        val documentUri =
+            DocumentsContract.buildDocumentUriUsingTree(
+                uri,
+                DocumentsContract.getTreeDocumentId(uri),
+            )
+
+        val name =
+            displayNameOf(documentUri, stripExtension = false)
+                ?: uri.lastPathSegment
+                ?: "Folder"
+
+        store.updateData { library ->
+            library.withSound(
+                id = UUID.randomUUID().toString(),
+                uri = uri.toString(),
+                name = name,
+                type = SoundType.FOLDER,
+            )
+        }
+    }
+
+    /**
      * Drops a sound from the board and releases its URI permission.
      *
      * The file itself is never deleted — that promise is in the confirmation
@@ -217,12 +255,17 @@ class SoundRepository(
         }
     }
 
-    private fun displayNameOf(uri: Uri): String? =
+    private fun displayNameOf(
+        uri: Uri,
+        stripExtension: Boolean = true,
+    ): String? =
         try {
             contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
                 val column = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                 if (column >= 0 && cursor.moveToFirst()) {
-                    cursor.getString(column)?.substringBeforeLast('.')
+                    cursor.getString(column)?.let { name ->
+                        if (stripExtension) name.substringBeforeLast('.') else name
+                    }
                 } else {
                     null
                 }

@@ -37,6 +37,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import de.lattemacchiato.soundboardng.data.SoundType
 import de.lattemacchiato.soundboardng.R
 import de.lattemacchiato.soundboardng.ui.SoundRowState
 
@@ -100,6 +101,9 @@ fun SoundRow(
 
                 val playbackLabel =
                     buildList {
+                        if (row.sound.type == SoundType.FOLDER) {
+                            add("📁")
+                        }
                         if (loop) {
                             add("↻")
                         }
