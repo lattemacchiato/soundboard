@@ -53,7 +53,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.lattemacchiato.soundboardng.R
 import de.lattemacchiato.soundboardng.audio.PlaybackService
+import de.lattemacchiato.soundboardng.data.PlaybackOrder
 import de.lattemacchiato.soundboardng.data.Sound
+import de.lattemacchiato.soundboardng.data.SoundType
 import de.lattemacchiato.soundboardng.data.TapBehavior
 import de.lattemacchiato.soundboardng.ui.components.DrawerScaffold
 import de.lattemacchiato.soundboardng.ui.components.RenameDialog
@@ -285,6 +287,43 @@ fun SoundboardScreen(
                         )
                     },
                 )
+                if (currentSound.type == SoundType.FOLDER) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                    ) {
+                        Text(
+                            text = "Playback order",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+
+                        SingleChoiceSegmentedButtonRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                        ) {
+                            val orders = listOf(
+                                PlaybackOrder.ALPHABETICAL to "Alphabetical",
+                                PlaybackOrder.SHUFFLE to "Shuffle",
+                            )
+
+                            orders.forEachIndexed { index, (order, label) ->
+                                SegmentedButton(
+                                    shape = SegmentedButtonDefaults.itemShape(
+                                        index = index,
+                                        count = orders.size,
+                                    ),
+                                    selected = currentSound.playbackOrder == order,
+                                    onClick = {
+                                        viewModel.setPlaybackOrder(sound.id, order)
+                                    },
+                                    label = { Text(label) },
+                                )
+                            }
+                        }
+                    }
+                }
                 Column(
                     modifier =
                         Modifier

@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import de.lattemacchiato.soundboardng.audio.PlaybackStatus
 import de.lattemacchiato.soundboardng.audio.SoundboardEngine
 import de.lattemacchiato.soundboardng.data.LockSettings
+import de.lattemacchiato.soundboardng.data.PlaybackOrder
 import de.lattemacchiato.soundboardng.data.Sound
 import de.lattemacchiato.soundboardng.data.SoundRepository
 import de.lattemacchiato.soundboardng.data.TapBehavior
@@ -86,6 +87,18 @@ class SoundboardViewModel(
         if (locked.value) return
         engine.setLoop(id, loop)
         viewModelScope.launch { if (!locked.value) repository.setLoop(id, loop) }
+    }
+
+    fun setPlaybackOrder(
+        id: String,
+        playbackOrder: PlaybackOrder,
+    ) {
+        if (locked.value) return
+        viewModelScope.launch {
+            if (!locked.value) {
+                repository.setPlaybackOrder(id, playbackOrder)
+            }
+        }
     }
 
     /** Stop every playing or paused sound immediately, resetting playback state. */

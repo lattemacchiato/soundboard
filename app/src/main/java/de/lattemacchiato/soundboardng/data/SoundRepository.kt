@@ -227,6 +227,15 @@ class SoundRepository(
         store.updateData { it.withLoop(id, loop) }
     }
 
+    suspend fun setPlaybackOrder(
+        id: String,
+        playbackOrder: PlaybackOrder,
+    ) {
+        store.updateData {
+            it.withPlaybackOrder(id, playbackOrder)
+        }
+    }
+
     suspend fun setVolume(
         id: String,
         percent: Int,

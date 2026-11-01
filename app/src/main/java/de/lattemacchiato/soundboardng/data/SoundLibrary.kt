@@ -117,6 +117,19 @@ data class SoundLibrary(
         loop: Boolean,
     ): SoundLibrary = withActiveSounds(sounds.map { if (it.id == id) it.copy(loop = loop) else it })
 
+    fun withPlaybackOrder(
+        id: String,
+        playbackOrder: PlaybackOrder,
+    ): SoundLibrary = withActiveSounds(
+        sounds.map {
+            if (it.id == id && it.type == SoundType.FOLDER) {
+                it.copy(playbackOrder = playbackOrder)
+            } else {
+                it
+            }
+        },
+    )
+
     fun withTapBehavior(
         id: String,
         behavior: TapBehavior,

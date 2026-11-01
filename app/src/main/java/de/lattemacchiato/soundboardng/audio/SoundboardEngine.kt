@@ -2,15 +2,18 @@ package de.lattemacchiato.soundboardng.audio
 
 import android.content.Context
 import android.media.AudioManager
+import android.net.Uri
 import android.os.SystemClock
 import android.util.Log
 import androidx.annotation.MainThread
+import androidx.annotation.OptIn
 import androidx.core.net.toUri
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import de.lattemacchiato.soundboardng.data.PlaybackOrder
 import de.lattemacchiato.soundboardng.data.Sound
@@ -21,6 +24,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,6 +55,10 @@ class SoundboardEngine(
     private val soundTypes = mutableMapOf<String, SoundType>()
     private val folderResolver = FolderAudioResolver(context.contentResolver)
     private val folderLoadJobs = mutableMapOf<String, Job>()
+    private val folderAudioFiles =
+        mutableMapOf<String, List<FolderAudioResolver.AudioFile>>()
+    private val folderPlaybackOrders =
+        mutableMapOf<String, PlaybackOrder>()
     private val fadeScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val fadeJobs = mutableMapOf<String, Job>()
     private val fadeFactors = mutableMapOf<String, Float>()
@@ -155,7 +163,16 @@ class SoundboardEngine(
     fun play(sound: Sound) {
         if (folderLoadJobs[sound.id]?.isActive == true) return
 
-        if (sound.type == SoundType.FOLDER && players[sound.id] == null) {
+        if (
+            sound.type == SoundType.FOLDER &&
+            (
+                players[sound.id] == null ||
+                    folderPlaybackOrders[sound.id] != sound.playbackOrder
+                )
+        ) {
+            if (players[sound.id] != null) {
+                release(sound.id)
+            }
             loadFolder(sound) { player ->
                 gains[sound.id] = sound.gain
                 cancelFade(sound.id)
@@ -163,7 +180,12 @@ class SoundboardEngine(
                 updateVolume(sound.id)
 
                 player.repeatMode =
-                    if (sound.loop) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF
+                    when {
+                        !sound.loop -> Player.REPEAT_MODE_OFF
+                        sound.playbackOrder == PlaybackOrder.SHUFFLE ->
+                            Player.REPEAT_MODE_OFF
+                        else -> Player.REPEAT_MODE_ALL
+                    }
 
                 if (!focus.request()) return@loadFolder
                 stopOtherPlayingSounds(sound.id)
@@ -188,12 +210,17 @@ class SoundboardEngine(
         cancelFade(sound.id)
         fadeFactors[sound.id] = 0f
         updateVolume(sound.id)
+
         player.repeatMode =
             when {
                 !sound.loop -> Player.REPEAT_MODE_OFF
+                sound.type == SoundType.FOLDER &&
+                    sound.playbackOrder == PlaybackOrder.SHUFFLE ->
+                    Player.REPEAT_MODE_OFF
                 sound.type == SoundType.FOLDER -> Player.REPEAT_MODE_ALL
                 else -> Player.REPEAT_MODE_ONE
             }
+
         if (!focus.request()) return
         stopOtherPlayingSounds(sound.id)
         if (!focus.request()) return
@@ -221,6 +248,9 @@ class SoundboardEngine(
         player.repeatMode =
             when {
                 !sound.loop -> Player.REPEAT_MODE_OFF
+                sound.type == SoundType.FOLDER &&
+                    sound.playbackOrder == PlaybackOrder.SHUFFLE ->
+                    Player.REPEAT_MODE_OFF
                 sound.type == SoundType.FOLDER -> Player.REPEAT_MODE_ALL
                 else -> Player.REPEAT_MODE_ONE
             }
@@ -303,6 +333,8 @@ class SoundboardEngine(
         cancelFade(id)
         fadeFactors.remove(id)
         players.remove(id)?.release()
+        folderAudioFiles.remove(id)
+        folderPlaybackOrders.remove(id)
         soundTypes.remove(id)
         gains.remove(id)
         pausedByFocusLoss.remove(id)
@@ -329,6 +361,7 @@ class SoundboardEngine(
         focus.abandon()
     }
 
+    @OptIn(UnstableApi::class)
     private fun loadFolder(
         sound: Sound,
         onReady: (ExoPlayer) -> Unit,
@@ -341,6 +374,8 @@ class SoundboardEngine(
                     folderResolver.resolve(sound.uri.toUri())
                 }
 
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+
                 if (files.isEmpty()) {
                     Log.w(
                         "SoundboardEngine",
@@ -350,14 +385,33 @@ class SoundboardEngine(
                     return@launch
                 }
 
-                val orderedFiles = when (sound.playbackOrder) {
-                    PlaybackOrder.ALPHABETICAL -> files
-                    PlaybackOrder.SHUFFLE -> files.shuffled()
+                folderAudioFiles[sound.id] = files
+                folderPlaybackOrders[sound.id] = sound.playbackOrder
+                val player = buildPlayer(sound)
+
+                players[sound.id] = player
+
+                val mediaItems =
+                    if (sound.playbackOrder == PlaybackOrder.SHUFFLE) {
+                        createShufflePass(files, null)
+                    } else {
+                        files.map { MediaItem.fromUri(it.uri) }
+                    }
+
+                player.setMediaItems(mediaItems)
+
+                if (
+                    sound.type == SoundType.FOLDER &&
+                    sound.playbackOrder == PlaybackOrder.SHUFFLE &&
+                    sound.loop
+                ) {
+                    appendShufflePass(player, files)
                 }
 
-                val player = buildPlayer(sound)
-                players[sound.id] = player
-                player.setMediaItems(orderedFiles.map { MediaItem.fromUri(it.uri) })
+                player.seekToDefaultPosition(
+                    player.currentTimeline.getFirstWindowIndex(player.shuffleModeEnabled)
+                )
+
                 player.prepare()
                 onReady(player)
             } catch (e: kotlinx.coroutines.CancellationException) {
@@ -365,6 +419,8 @@ class SoundboardEngine(
             } catch (e: Exception) {
                 Log.e("SoundboardEngine", "Failed to load folder: ${sound.name}", e)
                 players.remove(sound.id)?.release()
+                folderAudioFiles.remove(sound.id)
+                folderPlaybackOrders.remove(sound.id)
                 soundTypes.remove(sound.id)
                 setStatus(sound.id, PlaybackStatus.UNAVAILABLE)
             } finally {
@@ -379,6 +435,7 @@ class SoundboardEngine(
         folderLoadJobs[sound.id] = job
     }
 
+    @OptIn(UnstableApi::class)
     private fun buildPlayer(sound: Sound): ExoPlayer {
         soundTypes[sound.id] = sound.type
 
@@ -397,11 +454,13 @@ class SoundboardEngine(
                     false,
                 )
                 repeatMode =
-                    if (sound.loop) {
-                        if (sound.type == SoundType.FOLDER) Player.REPEAT_MODE_ALL
-                        else Player.REPEAT_MODE_ONE
-                    } else {
-                        Player.REPEAT_MODE_OFF
+                    when {
+                        !sound.loop -> Player.REPEAT_MODE_OFF
+                        sound.type == SoundType.FOLDER &&
+                            sound.playbackOrder == PlaybackOrder.SHUFFLE ->
+                            Player.REPEAT_MODE_OFF
+                        sound.type == SoundType.FOLDER -> Player.REPEAT_MODE_ALL
+                        else -> Player.REPEAT_MODE_ONE
                     }
 
                 if (sound.type == SoundType.FILE) {
@@ -415,12 +474,22 @@ class SoundboardEngine(
                         ) {
                             if (sound.type != SoundType.FOLDER) return
                             if (sound.playbackOrder != PlaybackOrder.SHUFFLE) return
-                            if (reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) return
 
-                            Log.d(
-                                "SoundboardEngine",
-                                "Shuffle playlist loop: ${sound.name}",
-                            )
+                            if (
+                                sound.loop &&
+                                reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO &&
+                                currentMediaItemIndex == mediaItemCount - 1
+                            ) {
+                                folderAudioFiles[sound.id]?.let { files ->
+                                    appendShufflePass(this@apply, files)
+
+                                    if (currentMediaItemIndex >= files.size * 2 - 1) {
+                                        removeMediaItems(0, files.size)
+                                    }
+                                }
+
+                            }
+
                         }
 
                         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -432,7 +501,14 @@ class SoundboardEngine(
                                 fadeFactors.remove(sound.id)
                                 pause()
                                 if (sound.type == SoundType.FOLDER) {
-                                    seekToDefaultPosition(0)
+                                    if (sound.playbackOrder == PlaybackOrder.SHUFFLE && !sound.loop) {
+                                        folderAudioFiles[sound.id]?.let { files ->
+                                            setMediaItems(createShufflePass(files, null))
+                                            prepare()
+                                        }
+                                    } else {
+                                        seekToDefaultPosition(0)
+                                    }
                                 } else {
                                     seekTo(0L)
                                 }
@@ -497,6 +573,38 @@ class SoundboardEngine(
                 pausedByFocusLoss.clear()
             }
         }
+    }
+
+    private fun createShufflePass(
+        files: List<FolderAudioResolver.AudioFile>,
+        previousLast: FolderAudioResolver.AudioFile?,
+    ): List<MediaItem> {
+        return shuffledWithoutImmediateRepeat(files, previousLast)
+            .map { MediaItem.fromUri(it.uri) }
+    }
+
+    private fun lastPlaylistUri(player: ExoPlayer): Uri? {
+        if (player.mediaItemCount == 0) return null
+
+        return player
+            .getMediaItemAt(player.mediaItemCount - 1)
+            .localConfiguration
+            ?.uri
+    }
+
+    private fun appendShufflePass(
+        player: ExoPlayer,
+        files: List<FolderAudioResolver.AudioFile>,
+    ) {
+        val previousLastUri = lastPlaylistUri(player)
+
+        val previousLastFile = files.find {
+            it.uri == previousLastUri
+        }
+
+        val nextPass = createShufflePass(files, previousLastFile)
+
+        player.addMediaItems(nextPass)
     }
 
     private fun applyDuck(factor: Float) {
