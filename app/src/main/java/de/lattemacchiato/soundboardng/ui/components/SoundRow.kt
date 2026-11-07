@@ -3,6 +3,8 @@ package de.lattemacchiato.soundboardng.ui.components
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -77,7 +80,27 @@ fun SoundRow(
             modifier
                 .fillMaxWidth()
                 .heightIn(min = minHeight)
-                .combinedClickable(onClick = onToggle, onLongClick = if (locked) null else onLongPress),
+                .then(
+                    if (locked) {
+                        Modifier.pointerInput(onToggle) {
+                            awaitEachGesture {
+                                awaitFirstDown(requireUnconsumed = false)
+                                onToggle()
+
+                                // Wait until all fingers are released.
+                                // Holding the button must not trigger another action.
+                                do {
+                                    val event = awaitPointerEvent()
+                                } while (event.changes.any { it.pressed })
+                            }
+                        }
+                    } else {
+                        Modifier.combinedClickable(
+                            onClick = onToggle,
+                            onLongClick = onLongPress,
+                        )
+                    }
+                ),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -152,31 +175,32 @@ fun SoundRow(
                 onClick = onVolumeClick,
                 enabled = !locked,
             )
+            if (!locked) {
+                FilledTonalIconButton(
+                    onClick = onRestart,
+                    colors =
+                        IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                        ),
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Icon(Icons.Filled.Replay, contentDescription = "Restart ${row.sound.name}")
+                }
 
-            FilledTonalIconButton(
-                onClick = onRestart,
-                colors =
-                    IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                    ),
-                modifier = Modifier.size(48.dp),
-            ) {
-                Icon(Icons.Filled.Replay, contentDescription = "Restart ${row.sound.name}")
-            }
-
-            FilledTonalIconButton(
-                onClick = onToggle,
-                colors =
-                    IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                    ),
-                modifier = Modifier.size(48.dp),
-            ) {
-                Icon(
-                    imageVector = if (row.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    contentDescription =
-                        stringResource(if (row.isPlaying) R.string.pause else R.string.play),
-                )
+                FilledTonalIconButton(
+                    onClick = onToggle,
+                    colors =
+                        IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                        ),
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Icon(
+                        imageVector = if (row.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        contentDescription =
+                            stringResource(if (row.isPlaying) R.string.pause else R.string.play),
+                    )
+                }
             }
         }
     }
