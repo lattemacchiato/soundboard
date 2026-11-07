@@ -8,7 +8,7 @@ and a simplified interface for use during live performances.
 ## Features
 
 - Multiple soundboards with configurable sound button sizes
-- Play, pause, restart and configurable tap behaviour
+- Play, pause, restart and per-sound configurable tap behaviour (Pause/Resume or Stop/Restart), with status indicators
 - Independent sound volume and per-sound fade-in/fade-out
 - Looping and optional simultaneous playback
 - Play individual audio files or entire folders
@@ -17,6 +17,7 @@ and a simplified interface for use during live performances.
 - Performance lock mode with immediate touch response
 - JSON configuration export and portable ZIP backups with audio
 - Light, dark and system appearance
+- Notification permission status and shortcut to Android settings (Android 13+)
 
 ## Screenshots
 

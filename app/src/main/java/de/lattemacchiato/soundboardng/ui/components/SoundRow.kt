@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import de.lattemacchiato.soundboardng.R
 import de.lattemacchiato.soundboardng.data.PlaybackOrder
 import de.lattemacchiato.soundboardng.data.SoundType
+import de.lattemacchiato.soundboardng.data.TapBehavior
 import de.lattemacchiato.soundboardng.ui.SoundRowState
 
 /**
@@ -134,6 +135,12 @@ fun SoundRow(
                                 },
                             )
                         }
+                        add(
+                            when (row.sound.tapBehavior) {
+                                TapBehavior.PAUSE_RESUME -> "⏯\uFE0E"
+                                TapBehavior.STOP_RESTART -> "▶\uFE0E"
+                            },
+                        )
                         if (loop) {
                             add("↻")
                         }
