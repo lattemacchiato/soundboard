@@ -78,6 +78,18 @@
     <string name="licenses_third_party_title">Third-party components</string>
     <string name="licenses_apache_note">Components marked Apache License 2.0 are distributed under those terms; a copy is available at https://www.apache.org/licenses/LICENSE-2.0. Every dependency this app ships is free software.</string>
 
+    <!-- Notification permission explanation (Android 13+) -->
+    <string name="notification_permission_title">Playback notifications</string>
+    <string name="notification_permission_message">Soundboard NG can continue playing sounds while the app is in the background or the screen is off.\n\nA notification lets you see when sounds are playing and stop all playback at any time.\n\nTo show this notification, Soundboard NG needs permission to send notifications.\n\nThis permission is optional. Sound playback works without it.</string>
+    <string name="notification_permission_continue">Continue</string>
+
+    <!-- Notification settings -->
+    <string name="notification_settings_section">Notifications</string>
+    <string name="notification_settings_title">Playback notifications</string>
+    <string name="notification_settings_enabled">Enabled</string>
+    <string name="notification_settings_disabled">Disabled</string>
+    <string name="notification_settings_open">Open Android settings</string>
+
     <!-- Playback notification -->
     <string name="playback_channel_name">Playback</string>
     <string name="playback_channel_description">Shown while sounds are looping, so playback keeps running in the background.</string>

@@ -1,6 +1,7 @@
 package de.lattemacchiato.soundboardng
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -12,16 +13,21 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import de.lattemacchiato.soundboardng.data.ThemeMode
 import de.lattemacchiato.soundboardng.ui.components.AppScaffold
@@ -67,23 +73,68 @@ class MainActivity : ComponentActivity() {
 }
 
 /**
- * Asks for POST_NOTIFICATIONS once on first launch (API 33+).
- *
- * Playback still works if the user declines — the foreground service starts
- * either way — but the notification, and with it the "Stop all" control, is
- * silently withheld by the system.
+ * Explains notification permission once before requesting it on Android 13+.
+ * The decision is remembered even when the user declines.
  */
 @Composable
 private fun RequestNotificationPermission() {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
 
     val context = LocalContext.current
+    val preferences =
+        remember(context) {
+            context.getSharedPreferences("notification_permission", Context.MODE_PRIVATE)
+        }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
-    LaunchedEffect(Unit) {
-        val granted =
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
-                PackageManager.PERMISSION_GRANTED
-        if (!granted) launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    val showExplanation =
+        remember {
+            mutableStateOf(
+                shouldExplainNotificationPermission(
+                    apiLevel = Build.VERSION.SDK_INT,
+                    permissionGranted =
+                        ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.POST_NOTIFICATIONS,
+                        ) == PackageManager.PERMISSION_GRANTED,
+                    explanationShown = preferences.getBoolean("explanation_shown", false),
+                ),
+            )
+        }
+
+    if (showExplanation.value) {
+        AlertDialog(
+            onDismissRequest = {
+                preferences.edit().putBoolean("explanation_shown", true).apply()
+                showExplanation.value = false
+            },
+            title = {
+                Text(stringResource(R.string.notification_permission_title))
+            },
+            text = {
+                Text(stringResource(R.string.notification_permission_message))
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        preferences.edit().putBoolean("explanation_shown", true).apply()
+                        showExplanation.value = false
+                        launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    },
+                ) {
+                    Text(stringResource(R.string.notification_permission_continue))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        preferences.edit().putBoolean("explanation_shown", true).apply()
+                        showExplanation.value = false
+                    },
+                ) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
     }
 }
