@@ -1,0 +1,7 @@
+Features:
+
+- add folder picker and persistent folder tiles
+- add folder playback with alphabetical and shuffle modes
+- extend sound model for folder playback
+- implement basic folder playlist playback
+- simplify playback controls in performance lock mode
