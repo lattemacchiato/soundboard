@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.2.0](https://github.com/lattemacchiato/soundboard/compare/v1.1.1...v1.2.0) (2026-11-07)
+
+
+### Features
+
+* add folder picker and persistent folder tiles ([3f183ea](https://github.com/lattemacchiato/soundboard/commit/3f183ea99c3f0ce894fe5da415eab7a6672201b8))
+* add folder playback with alphabetical and shuffle modes ([19e4aec](https://github.com/lattemacchiato/soundboard/commit/19e4aecfd9152828d3ddd24379385a1573b55d14))
+* extend sound model for folder playback ([a8586b7](https://github.com/lattemacchiato/soundboard/commit/a8586b7a524a44ed9549715a8b5b415fe29fefd8))
+* implement basic folder playlist playback ([652b615](https://github.com/lattemacchiato/soundboard/commit/652b6154146f1fe7adc49c9762859ddb513fc527))
+* simplify playback controls in performance lock mode ([d6a575f](https://github.com/lattemacchiato/soundboard/commit/d6a575f8e9250431392546b595bc94ff6d30145e))
+
 ## [1.1.1](https://github.com/lattemacchiato/soundboard/compare/v1.1.0...v1.1.1) (2026-10-31)
 
 
