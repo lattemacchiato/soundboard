@@ -24,34 +24,36 @@ class FolderAudioResolver(
 
         val files = mutableListOf<AudioFile>()
 
-        contentResolver.query(
-            childrenUri,
-            arrayOf(
-                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-                DocumentsContract.Document.COLUMN_MIME_TYPE,
-            ),
-            null,
-            null,
-            null,
-        )?.use { cursor ->
-            val idColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
-            val nameColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
-            val mimeColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE)
+        contentResolver
+            .query(
+                childrenUri,
+                arrayOf(
+                    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                    DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                    DocumentsContract.Document.COLUMN_MIME_TYPE,
+                ),
+                null,
+                null,
+                null,
+            )?.use { cursor ->
+                val idColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                val nameColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                val mimeColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE)
 
-            while (cursor.moveToNext()) {
-                val mimeType = cursor.getString(mimeColumn) ?: continue
-                if (!mimeType.startsWith("audio/", ignoreCase = true)) continue
+                while (cursor.moveToNext()) {
+                    val mimeType = cursor.getString(mimeColumn) ?: continue
+                    if (!mimeType.startsWith("audio/", ignoreCase = true)) continue
 
-                val documentId = cursor.getString(idColumn) ?: continue
-                val name = cursor.getString(nameColumn) ?: continue
+                    val documentId = cursor.getString(idColumn) ?: continue
+                    val name = cursor.getString(nameColumn) ?: continue
 
-                files += AudioFile(
-                    uri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId),
-                    name = name,
-                )
+                    files +=
+                        AudioFile(
+                            uri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId),
+                            name = name,
+                        )
+                }
             }
-        }
 
         return files.sortedWith(
             compareBy<AudioFile, String>(String.CASE_INSENSITIVE_ORDER) { it.name }

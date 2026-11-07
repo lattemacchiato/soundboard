@@ -120,15 +120,16 @@ data class SoundLibrary(
     fun withPlaybackOrder(
         id: String,
         playbackOrder: PlaybackOrder,
-    ): SoundLibrary = withActiveSounds(
-        sounds.map {
-            if (it.id == id && it.type == SoundType.FOLDER) {
-                it.copy(playbackOrder = playbackOrder)
-            } else {
-                it
-            }
-        },
-    )
+    ): SoundLibrary =
+        withActiveSounds(
+            sounds.map {
+                if (it.id == id && it.type == SoundType.FOLDER) {
+                    it.copy(playbackOrder = playbackOrder)
+                } else {
+                    it
+                }
+            },
+        )
 
     fun withTapBehavior(
         id: String,
