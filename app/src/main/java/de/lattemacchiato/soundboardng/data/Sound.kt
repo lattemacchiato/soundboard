@@ -18,6 +18,8 @@ data class Sound(
     val id: String,
     val uri: String,
     val name: String,
+    val type: SoundType = SoundType.FILE,
+    val playbackOrder: PlaybackOrder = PlaybackOrder.ALPHABETICAL,
     val volumePercent: Int = DEFAULT_VOLUME_PERCENT,
     val loop: Boolean = true,
     val tapBehavior: TapBehavior = TapBehavior.PAUSE_RESUME,

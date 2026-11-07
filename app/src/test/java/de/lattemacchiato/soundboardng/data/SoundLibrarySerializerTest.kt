@@ -140,4 +140,41 @@ class SoundLibrarySerializerTest {
             assertEquals(false, restored.defaultLoop)
             assertEquals(false, restored.sounds.first().loop)
         }
+
+    @Test
+    fun `existing sound without folder fields uses file defaults`() =
+        runTest {
+            val json =
+                """
+                {
+                    "boards": [
+                        {
+                            "id": "default",
+                            "name": "Default",
+                            "sounds": [
+                                {
+                                    "id": "rain",
+                                    "uri": "content://rain",
+                                    "name": "Rain",
+                                    "volumePercent": 37,
+                                    "loop": true
+                                }
+                            ]
+                        }
+                    ],
+                    "activeBoardId": "default"
+                }
+                """.trimIndent()
+
+            val restored =
+                SoundLibrarySerializer.readFrom(
+                    ByteArrayInputStream(json.toByteArray()),
+                )
+
+            val sound = restored.sounds.single()
+            assertEquals(SoundType.FILE, sound.type)
+            assertEquals(PlaybackOrder.ALPHABETICAL, sound.playbackOrder)
+            assertEquals(37, sound.volumePercent)
+            assertEquals(true, sound.loop)
+        }
 }
