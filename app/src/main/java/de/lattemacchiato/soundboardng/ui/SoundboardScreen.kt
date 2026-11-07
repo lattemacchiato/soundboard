@@ -289,9 +289,10 @@ fun SoundboardScreen(
                 )
                 if (currentSound.type == SoundType.FOLDER) {
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
                     ) {
                         Text(
                             text = "Playback order",
@@ -299,21 +300,24 @@ fun SoundboardScreen(
                         )
 
                         SingleChoiceSegmentedButtonRow(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
                         ) {
-                            val orders = listOf(
-                                PlaybackOrder.ALPHABETICAL to "Alphabetical",
-                                PlaybackOrder.SHUFFLE to "Shuffle",
-                            )
+                            val orders =
+                                listOf(
+                                    PlaybackOrder.ALPHABETICAL to "Alphabetical",
+                                    PlaybackOrder.SHUFFLE to "Shuffle",
+                                )
 
                             orders.forEachIndexed { index, (order, label) ->
                                 SegmentedButton(
-                                    shape = SegmentedButtonDefaults.itemShape(
-                                        index = index,
-                                        count = orders.size,
-                                    ),
+                                    shape =
+                                        SegmentedButtonDefaults.itemShape(
+                                            index = index,
+                                            count = orders.size,
+                                        ),
                                     selected = currentSound.playbackOrder == order,
                                     onClick = {
                                         viewModel.setPlaybackOrder(sound.id, order)

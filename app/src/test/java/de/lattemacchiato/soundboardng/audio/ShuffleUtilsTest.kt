@@ -6,23 +6,24 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ShuffleUtilsTest {
-
     @Test
     fun emptyListRemainsEmpty() {
-        val result = shuffledWithoutImmediateRepeat(
-            emptyList<String>(),
-            null,
-        )
+        val result =
+            shuffledWithoutImmediateRepeat(
+                emptyList<String>(),
+                null,
+            )
 
         assertTrue(result.isEmpty())
     }
 
     @Test
     fun singleItemRemainsUnchanged() {
-        val result = shuffledWithoutImmediateRepeat(
-            listOf("A"),
-            "A",
-        )
+        val result =
+            shuffledWithoutImmediateRepeat(
+                listOf("A"),
+                "A",
+            )
 
         assertEquals(listOf("A"), result)
     }

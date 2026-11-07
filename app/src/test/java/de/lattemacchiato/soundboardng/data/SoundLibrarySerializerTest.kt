@@ -146,25 +146,25 @@ class SoundLibrarySerializerTest {
         runTest {
             val json =
                 """
-            {
-                "boards": [
-                    {
-                        "id": "default",
-                        "name": "Default",
-                        "sounds": [
-                            {
-                                "id": "rain",
-                                "uri": "content://rain",
-                                "name": "Rain",
-                                "volumePercent": 37,
-                                "loop": true
-                            }
-                        ]
-                    }
-                ],
-                "activeBoardId": "default"
-            }
-            """.trimIndent()
+                {
+                    "boards": [
+                        {
+                            "id": "default",
+                            "name": "Default",
+                            "sounds": [
+                                {
+                                    "id": "rain",
+                                    "uri": "content://rain",
+                                    "name": "Rain",
+                                    "volumePercent": 37,
+                                    "loop": true
+                                }
+                            ]
+                        }
+                    ],
+                    "activeBoardId": "default"
+                }
+                """.trimIndent()
 
             val restored =
                 SoundLibrarySerializer.readFrom(

@@ -168,7 +168,7 @@ class SoundboardEngine(
             (
                 players[sound.id] == null ||
                     folderPlaybackOrders[sound.id] != sound.playbackOrder
-                )
+            )
         ) {
             if (players[sound.id] != null) {
                 release(sound.id)
@@ -368,69 +368,71 @@ class SoundboardEngine(
     ) {
         if (folderLoadJobs[sound.id]?.isActive == true) return
 
-        val job = fadeScope.launch {
-            try {
-                val files = withContext(Dispatchers.IO) {
-                    folderResolver.resolve(sound.uri.toUri())
-                }
+        val job =
+            fadeScope.launch {
+                try {
+                    val files =
+                        withContext(Dispatchers.IO) {
+                            folderResolver.resolve(sound.uri.toUri())
+                        }
 
-                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                    kotlinx.coroutines.currentCoroutineContext().ensureActive()
 
-                if (files.isEmpty()) {
-                    Log.w(
-                        "SoundboardEngine",
-                        "Folder contains no supported audio files: ${sound.name}",
-                    )
-                    setStatus(sound.id, PlaybackStatus.UNAVAILABLE)
-                    return@launch
-                }
-
-                folderAudioFiles[sound.id] = files
-                folderPlaybackOrders[sound.id] = sound.playbackOrder
-                val player = buildPlayer(sound)
-
-                players[sound.id] = player
-
-                val mediaItems =
-                    if (sound.playbackOrder == PlaybackOrder.SHUFFLE) {
-                        createShufflePass(files, null)
-                    } else {
-                        files.map { MediaItem.fromUri(it.uri) }
+                    if (files.isEmpty()) {
+                        Log.w(
+                            "SoundboardEngine",
+                            "Folder contains no supported audio files: ${sound.name}",
+                        )
+                        setStatus(sound.id, PlaybackStatus.UNAVAILABLE)
+                        return@launch
                     }
 
-                player.setMediaItems(mediaItems)
+                    folderAudioFiles[sound.id] = files
+                    folderPlaybackOrders[sound.id] = sound.playbackOrder
+                    val player = buildPlayer(sound)
 
-                if (
-                    sound.type == SoundType.FOLDER &&
-                    sound.playbackOrder == PlaybackOrder.SHUFFLE &&
-                    sound.loop
-                ) {
-                    appendShufflePass(player, files)
-                }
+                    players[sound.id] = player
 
-                player.seekToDefaultPosition(
-                    player.currentTimeline.getFirstWindowIndex(player.shuffleModeEnabled)
-                )
+                    val mediaItems =
+                        if (sound.playbackOrder == PlaybackOrder.SHUFFLE) {
+                            createShufflePass(files, null)
+                        } else {
+                            files.map { MediaItem.fromUri(it.uri) }
+                        }
 
-                player.prepare()
-                onReady(player)
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e("SoundboardEngine", "Failed to load folder: ${sound.name}", e)
-                players.remove(sound.id)?.release()
-                folderAudioFiles.remove(sound.id)
-                folderPlaybackOrders.remove(sound.id)
-                soundTypes.remove(sound.id)
-                setStatus(sound.id, PlaybackStatus.UNAVAILABLE)
-            } finally {
-                if (folderLoadJobs[sound.id] ===
-                    kotlinx.coroutines.currentCoroutineContext()[Job]
-                ) {
-                    folderLoadJobs.remove(sound.id)
+                    player.setMediaItems(mediaItems)
+
+                    if (
+                        sound.type == SoundType.FOLDER &&
+                        sound.playbackOrder == PlaybackOrder.SHUFFLE &&
+                        sound.loop
+                    ) {
+                        appendShufflePass(player, files)
+                    }
+
+                    player.seekToDefaultPosition(
+                        player.currentTimeline.getFirstWindowIndex(player.shuffleModeEnabled),
+                    )
+
+                    player.prepare()
+                    onReady(player)
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.e("SoundboardEngine", "Failed to load folder: ${sound.name}", e)
+                    players.remove(sound.id)?.release()
+                    folderAudioFiles.remove(sound.id)
+                    folderPlaybackOrders.remove(sound.id)
+                    soundTypes.remove(sound.id)
+                    setStatus(sound.id, PlaybackStatus.UNAVAILABLE)
+                } finally {
+                    if (folderLoadJobs[sound.id] ===
+                        kotlinx.coroutines.currentCoroutineContext()[Job]
+                    ) {
+                        folderLoadJobs.remove(sound.id)
+                    }
                 }
             }
-        }
 
         folderLoadJobs[sound.id] = job
     }
@@ -487,9 +489,7 @@ class SoundboardEngine(
                                         removeMediaItems(0, files.size)
                                     }
                                 }
-
                             }
-
                         }
 
                         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -578,10 +578,9 @@ class SoundboardEngine(
     private fun createShufflePass(
         files: List<FolderAudioResolver.AudioFile>,
         previousLast: FolderAudioResolver.AudioFile?,
-    ): List<MediaItem> {
-        return shuffledWithoutImmediateRepeat(files, previousLast)
+    ): List<MediaItem> =
+        shuffledWithoutImmediateRepeat(files, previousLast)
             .map { MediaItem.fromUri(it.uri) }
-    }
 
     private fun lastPlaylistUri(player: ExoPlayer): Uri? {
         if (player.mediaItemCount == 0) return null
@@ -598,9 +597,10 @@ class SoundboardEngine(
     ) {
         val previousLastUri = lastPlaylistUri(player)
 
-        val previousLastFile = files.find {
-            it.uri == previousLastUri
-        }
+        val previousLastFile =
+            files.find {
+                it.uri == previousLastUri
+            }
 
         val nextPass = createShufflePass(files, previousLastFile)
 
