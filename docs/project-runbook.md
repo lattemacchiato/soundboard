@@ -1,9 +1,9 @@
 # Soundboard NG – Projektdokumentation und Runbook
 
-**Stand:** 01.11.2026  
-**Repository:** https://github.com/lattemacchiato/soundboard  
-**Basis:** Fork von `508-dev/soundboard` (GPL-3.0)  
-**Status:** v1.1.1 veröffentlicht; nächstes Feature: **Play Folder**
+**Stand:** 07.11.2026
+**Repository:** https://github.com/lattemacchiato/soundboard
+**Basis:** Fork von `508-dev/soundboard` (GPL-3.0)
+**Status:** v1.2.0 veröffentlicht und getestet; `main` und `develop` synchron
 
 > Zusammenfassung der gemeinsam erarbeiteten, bestätigten Abläufe und Entscheidungen. Bei künftigen Änderungen sind der aktuelle Quellcode und die tatsächlichen CI-Ergebnisse maßgeblich.
 
@@ -14,21 +14,22 @@
 | Lokales Projekt | `~/AndroidStudioProjects/soundboard` |
 | System | Ubuntu 24.04, Android Studio |
 | Technologie | Kotlin, Jetpack Compose, Gradle |
-| Testgerät | Samsung Galaxy Tab A (2016), Android 8.1 / API 27 |
+| Referenzgerät | Samsung Galaxy Tab A (2016), Android 8.1 / API 27 |
+| Weiteres Testgerät | Samsung Galaxy S24 |
 | Release Application ID | `de.lattemacchiato.soundboardng` |
 | Debug Application ID | `de.lattemacchiato.soundboardng.debug` |
-| Stabiles Release | `v1.1.1` |
-| Installierter Debug-Stand | `1.1.1-dev` |
+| Stabiles Release | `v1.2.0` |
+| Installierter Debug-Stand | `1.2.0-dev` |
 
-Die App ist kostenlos, werbefrei, trackingfrei, Open Source und vollständig offline nutzbar. Die ursprüngliche Application ID `dev.co508.soundboard` wurde für Soundboard NG ersetzt. Release und Debug können wegen verschiedener Application IDs parallel auf dem Tablet installiert werden.
+Die App ist kostenlos, werbefrei, trackingfrei, Open Source und vollständig offline nutzbar. Die ursprüngliche Application ID `dev.co508.soundboard` wurde ersetzt. Release und Debug sind eigenständige Installationen mit separaten Daten und können parallel betrieben werden.
 
 ## 2. Arbeitsweise und Git-Strategie
 
-**Zusammenarbeit:** Immer nur einen überschaubaren Schritt bearbeiten, die Ausgabe abwarten und erst dann fortfahren. Kleine Änderungen direkt im Editor; größere Änderungen als anwendbare Unified-Diff-Patches. Vor Umbauten zuerst Datenmodell, Audio-Engine und Abhängigkeiten untersuchen. Regelmäßig bauen, testen und committen. Git-Merges, Pushes und Releases bewusst und kontrolliert ausführen.
+**Zusammenarbeit:** In kleinen, kontrollierten Schritten arbeiten. Konkrete Bash-Befehle bereitstellen, Ausgabe abwarten und erst danach fortfahren. Neue Dateien bevorzugt mit Bash-Heredocs erstellen. Vor Umbauten Datenmodell, Audio-Engine und Abhängigkeiten prüfen.
 
-**Branches:** `main` = stabil/veröffentlicht; `develop` = Integration; größere Features auf eigenen Feature-Branches. Nach Release `v1.1.1` wurde `origin/main` in `develop` integriert (Merge-Commit `6176f27`), `develop` gepusht und ein sauberer Arbeitsstand bestätigt.
+**Branches:** `main` ist stabil und veröffentlicht; `develop` dient der Integration. Features auf `feature/*`, Fehlerbehebungen auf `fix/*`, Dokumentation auf `docs/*` entwickeln. Release Please erzeugt eigene temporäre Branches.
 
-Nützliche Befehle:
+**Verbindlich:** `./gradlew check` vor jedem Commit, Merge und Release. Zusätzliche Gerätetests nach Bedarf. Beim PR von `develop` nach `main` einen **normalen Merge-Commit** verwenden, nicht Squash: Conventional Commits sollen für Release Please erhalten bleiben.
 
 ```bash
 git branch --show-current
@@ -36,265 +37,320 @@ git status -sb
 git fetch origin
 git log --oneline --max-count=5
 git diff --check
-./gradlew assembleDebug
+./gradlew check
 ./scripts/sync-version.sh --check
 ```
 
+Nach v1.2.0 sind `main`, `develop` und `origin/develop` auf `e6590267e15b799634155f044f85509ef9f4fda8` synchronisiert. Die alten Release-Please-Branches wurden entfernt.
+
 ## 3. Vorhandene App-Funktionen und Entscheidungen
 
-- Mehrere Soundboards; Wechsel über Hamburger-Menü.
-- Pro Sound Loop oder One-Shot.
-- Boardwechsel stoppt alle laufenden Sounds.
-- Fade-out stoppt und setzt die Wiedergabeposition zurück.
-- Persistenter Lock-Modus, der das Hamburger-Menü deaktiviert.
-- Board-Löschen nur nach Bestätigung; letztes Board nicht löschbar.
-- Titelzeile zeigt den aktuellen Boardnamen.
-- Sortier-/Rearrange-Modus und persistente Soundboard-Daten.
-- Lock-Modus wurde auf Android 8.1 erfolgreich getestet.
+- Mehrere Soundboards; Anlegen, Umbenennen, Löschen und Wechseln.
+- Einzelne Sounds mit Loop oder One-Shot.
+- Ordnerwiedergabe mit alphabetischer Reihenfolge oder Shuffle ohne Wiederholung innerhalb eines Durchlaufs; bei Loop + Shuffle neue Mischung pro Durchlauf.
+- Boardwechsel stoppt alle laufenden Sounds; Fade-out stoppt und setzt die Wiedergabeposition zurück.
+- Persistenter Lock-Modus; Hamburger-Menü deaktiviert, vereinfachte Bedienelemente, unmittelbares Auslösen und Schutz gegen unbeabsichtigte Mehrfachauslösung.
+- Board-Löschen mit Bestätigung; letztes Board nicht löschbar.
+- Aktiver Boardname in der Titelzeile; Sortier-/Rearrange-Modus.
+- Backup/Restore und persistente Einstellungen.
+- Screenshots im README und unter `docs/screenshots/`.
 
-Konkrete Klassennamen und Implementierungsdetails vor einer Änderung erneut im Repository prüfen.
+Konkrete Klassen und Implementierungsdetails vor Änderungen erneut im Repository prüfen.
 
 ## 4. Versionierung und abgeleitete Dateien
 
-`version.txt` ist die maßgebliche Versionsquelle; Release Please aktualisiert sie. `scripts/sync-version.sh` erzeugt daraus:
+`version.txt` ist die maßgebliche Versionsquelle; Release Please aktualisiert sie. `scripts/sync-version.sh` synchronisiert daraus:
 
-- `versionName` in `app/build.gradle.kts`
-- `versionCode` in `app/build.gradle.kts`
-- `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`
-
-Formel:
+- `versionName` und `versionCode` in `app/build.gradle.kts`.
+- `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 
 ```text
 versionCode = MAJOR * 1000000 + MINOR * 1000 + PATCH
 ```
 
-Für `1.1.1`: `versionCode = 1001001`, `versionName = "1.1.1"`.
+Für v1.2.0: `versionCode = 1002000`, `versionName = "1.2.0"`; Debug verwendet `1.2.0-dev`.
 
 ```bash
-./scripts/sync-version.sh          # generierte Dateien aktualisieren
-./scripts/sync-version.sh --check  # Konsistenz prüfen (auch CI)
-./scripts/sync-version.sh --print  # berechnete Werte anzeigen
+./scripts/sync-version.sh
+./scripts/sync-version.sh --check
+./scripts/sync-version.sh --print
 ```
 
-**F-Droid-Anforderung:** `versionCode` und `versionName` müssen als einfache Literale auf eigenen Zeilen in `app/build.gradle.kts` stehen. Eine dynamische Gradle-Berechnung würde die bisherige F-Droid-Versionserkennung gefährden.
-
-Debug verwendet das Suffix `-dev`. Änderungen am Quellcode aktualisieren die bereits installierte Debug-App nicht automatisch.
+**F-Droid:** `versionCode` und `versionName` müssen als einfache Literale auf eigenen Zeilen in `app/build.gradle.kts` stehen. Ein Build aktualisiert keine bereits installierte App: Die APK muss danach installiert werden.
 
 ## 5. CI, Branch Protection und Release Please
 
-### CI
+### CI und Branch Protection
 
-`.github/workflows/ci.yml` prüft unter anderem Versionskonsistenz, ktlint, Unit-Tests, Android Lint und Debug-Build. Der erforderliche Job-Status heißt `build`; ein weiterer Pflichtcheck heißt `conventional-commit`.
+`.github/workflows/ci.yml` prüft unter anderem Versionskonsistenz, ktlint, Unit-Tests, Android Lint und Debug-Build. Erforderliche Statuschecks für `main`: `build` und `conventional-commit`. Pull Request erforderlich, derzeit 0 verpflichtende Reviews, Strict Checks aktiviert.
 
-Für `main` wurde Branch Protection eingerichtet:
-
-- Pull Request erforderlich; **0** notwendige Review-Freigaben.
-- Erforderliche Statuschecks: `build`, `conventional-commit`.
-- Strict Checks aktiviert (Branch muss aktuell sein).
-
-GitHub Actions sind aktiviert, externe Actions zugelassen; Workflow-Default-Berechtigung `write`. `.github/workflows/release-please.yml` fordert `contents: write` und `pull-requests: write`.
-
-**Fallstrick:** Mit dem üblichen `GITHUB_TOKEN` erstellte PRs/Pushes lösen reguläre `pull_request`-/`push`-CI nicht immer erneut aus. Ein separat gestarteter `workflow_dispatch` ersetzt keinen erforderlichen PR-Statuscheck. Vollautomatische PR-Synchronisierung wurde daher zurückgestellt.
+**Fallstrick:** Mit `GITHUB_TOKEN` erzeugte Bot-Pushes lösen reguläre PR-/Push-Checks nicht zwingend erneut aus. Ein `workflow_dispatch` ersetzt keinen verpflichtenden PR-Statuscheck. Die vollautomatische Release-PR-Synchronisierung ist daher zurückgestellt.
 
 ### Release-Please-Konfiguration
 
 - `release-please-config.json`: `release-type: simple`, `separate-pull-requests: true`, Tags `vX.Y.Z`.
-- `.release-please-manifest.json`: zuletzt `{".": "1.1.1"}`.
-- `CHANGELOG.md` wird von Release Please gepflegt.
-- `version.txt` wird von Release Please aktualisiert.
+- `.release-please-manifest.json`: nach v1.2.0 auf `1.2.0`.
+- `CHANGELOG.md` und `version.txt` werden durch Release Please aktualisiert.
 
-`v1.1.0` wurde zur Wiederherstellung einer konsistenten Release-Basis manuell veröffentlicht. Danach erstellte Release Please PR **#5** für `v1.1.1`. Nach manueller Synchronisierung der abgeleiteten Dateien und erfolgreicher CI wurde PR #5 per Squash gemergt. Release Please erzeugte daraufhin Tag und Release `v1.1.1`.
+### Verbindlicher halbautomatischer Release-Ablauf
 
-### Halbautomatisches Release-Runbook
+**A – `develop` nach `main`**
 
-1. Änderungen über Feature-Branches und `develop` integrieren.
-2. Release Please erstellt Release-PR.
-3. Release-PR-Branch lokal auschecken.
-4. `./scripts/sync-version.sh` ausführen.
-5. `./scripts/sync-version.sh --check` ausführen; abgeleitete Dateien committen und pushen.
-6. Auf grüne Pflichtchecks `build` und `conventional-commit` warten.
-7. Release-PR mergen.
-8. Release-Please-Workflow und neues Tag/Release kontrollieren.
-9. **Signierte APK bauen, verifizieren und als Release-Asset hochladen** (Abschnitt 6).
-10. Veröffentlichten `main`-Stand in `develop` integrieren und pushen.
+1. Feature-Branches nach Tests in `develop` integrieren.
+2. Auf `develop` `./gradlew check` ausführen.
+3. PR von `develop` nach `main` erstellen; CI und Conventional-Commit-Check abwarten.
+4. PR mit **Create a merge commit** mergen, nicht squashen.
 
-Kontrollbefehle:
+**B – Release-Please-PR**
+
+5. Den von Release Please erzeugten Release-PR und dessen **tatsächlichen Branch-Namen** prüfen (bei v1.2.0: `release-please--branches--main--components--soundboard-ng`).
+6. Branch lokal auschecken; `./scripts/sync-version.sh` und `./scripts/sync-version.sh --check` ausführen.
+7. `./gradlew check` ausführen, abgeleitete Versionsdateien committen und pushen.
+8. Pflichtchecks `build` und `conventional-commit` abwarten.
+9. Release-PR mit normalem Merge-Commit mergen. Release Please erstellt Tag, Changelog und GitHub-Release.
+
+**C – Release-Stand lokal synchronisieren**
+
+```bash
+git switch main
+git pull --ff-only origin main
+git fetch origin --tags
+git log -1 --oneline
+git show -s --oneline vX.Y.Z
+git status -sb
+```
+
+Vor dem APK-Build sicherstellen, dass HEAD auf dem veröffentlichten Tag steht; bei inzwischen weiteren Commits ausdrücklich vom Release-Tag bauen. Danach signierte APK bauen, prüfen und auf dem Referenzgerät testen (Abschnitt 6).
+
+**D – Veröffentlichung und Nachbereitung**
+
+10. Getestete APK unter `Soundboard-NG-vX.Y.Z.apk` als Asset zum bestehenden Release hochladen.
+11. GitHub-Asset und Release-Status kontrollieren.
+12. `develop` per geprüftem Fast-Forward auf `main` bringen, `./gradlew check`, dann pushen.
+13. Vollständig gemergte, nicht mehr benötigte Release-Please-Branches prüfen und löschen.
+14. Debug-APK neu bauen und auf dem S24 installieren; beide Versionen kontrollieren.
 
 ```bash
 gh pr view <NUMMER> --json state,mergeable,reviewDecision,statusCheckRollup
 gh run list --workflow=release-please.yml --limit 5
-gh release view vX.Y.Z --json tagName,name,isDraft,isPrerelease,publishedAt,url
+gh release view vX.Y.Z --json tagName,isDraft,isPrerelease,assets
 ```
+
+**Hinweis:** `isLatest` ist in der verwendeten `gh release view --json`-Version kein unterstütztes Feld.
 
 ## 6. Signierte Release-APK: Bau, Prüfung, Installation, Veröffentlichung
 
 ### Signierung
 
-Die Release-Signierung in `app/build.gradle.kts` verwendet lokal `keystore.properties`, alternativ `SOUNDBOARD_KEYSTORE_*`-Umgebungsvariablen in CI. Ohne Signierungsdaten wird eine unsignierte Release-APK gebaut (für F-Droid vorgesehen).
+Die Release-Signierung in `app/build.gradle.kts` verwendet lokal `keystore.properties`, alternativ `SOUNDBOARD_KEYSTORE_*`-Umgebungsvariablen in CI. Historischer Keystore-Pfad: `~/AndroidSigning/soundboard-ng-release.jks`, Alias `soundboard-ng`.
 
-Der lokale Keystore und die vier Signierungsparameter wurden als vorhanden geprüft. Historischer Keystore-Pfad: `~/AndroidSigning/soundboard-ng-release.jks`, Alias `soundboard-ng`.
+**Unbedingt denselben Keystore für Updates verwenden.** Keystore, private Schlüssel und Passwörter niemals committen oder veröffentlichen. Ohne Signierdaten kann ein unsignierter Release-Build entstehen; den Signaturstatus daher immer explizit prüfen.
 
-**Unbedingt denselben Keystore für spätere Updates behalten.** Keystore, Schlüssel und Passwörter niemals committen oder veröffentlichen.
-
-### SDK-Umgebung
-
-In einer neuen Shell waren diese Exports erforderlich:
+### APK bauen und Signatur prüfen
 
 ```bash
 export ANDROID_HOME="$HOME/Android/Sdk"
 export ANDROID_SDK_ROOT="$ANDROID_HOME"
-```
 
-Die vorhandene Build-Tools-Version war `36.0.0`.
-
-### APK bauen und verifizieren
-
-Den Build vom passenden veröffentlichten Quellstand ausführen:
-
-```bash
+./gradlew check
 ./gradlew assembleRelease
 
 APK=app/build/outputs/apk/release/app-release.apk
-BT="$ANDROID_HOME/build-tools/36.0.0"
-"$BT/aapt" dump badging "$APK" | head -1
-"$BT/apksigner" verify --verbose "$APK"
+cat app/build/outputs/apk/release/output-metadata.json
+
+APKSIGNER="$(find "$HOME/Android/Sdk/build-tools" \
+  -name apksigner -type f | sort -V | tail -n 1)"
+"$APKSIGNER" verify --verbose --print-certs "$APK"
 ```
 
-Für `v1.1.1` wurden bestätigt:
+Für v1.2.0 bestätigt: `Verifies`, v2-Signatur `true`, ein Signierer, RSA 4096 Bit, Zertifikats-SHA-256 `9d9c85cd80039d1528a5cfeb4824bc9bc52cd0c0d93a57ad4f07ad371479a5b0`. v1-Signatur ist nicht vorhanden, für Android 8.1 jedoch nicht erforderlich. Die Java-Warnungen zur nativen Bibliotheksladung waren nicht kritisch.
 
-| Prüfung | Ergebnis |
-|---|---|
-| Paket | `de.lattemacchiato.soundboardng` |
-| Version | `1.1.1` |
-| VersionCode | `1001001` |
-| APK-Größe | 2.338.541 Bytes |
-| APK-Signaturschema v2 | `true` |
-| Signierer | 1 |
-
-Android 8.1 unterstützt v2-Signaturen. Die beim Prüfen erschienenen Java-Warnungen zur nativen Bibliotheksladung waren nicht kritisch.
-
-### Auf dem Tablet installieren
+### Update auf Galaxy Tab A und Regressionstest
 
 ```bash
 adb devices
+adb shell dumpsys package de.lattemacchiato.soundboardng \
+  | grep -E 'versionCode=|versionName='
 adb install -r app/build/outputs/apk/release/app-release.apk
+adb shell dumpsys package de.lattemacchiato.soundboardng \
+  | grep -E 'versionCode=|versionName='
 ```
 
-`-r` aktualisiert eine bestehende App mit gleicher Application ID und kompatibler Signatur und erhält normalerweise die Daten. **Bei `INSTALL_FAILED_UPDATE_INCOMPATIBLE` nicht deinstallieren**, sondern zuerst Signaturursache prüfen.
+`-r` aktualisiert die bestehende App bei kompatibler Application ID und Signatur unter Erhalt der App-Daten. **Bei `INSTALL_FAILED_UPDATE_INCOMPATIBLE` keinesfalls deinstallieren**, sondern zuerst die Signaturursache untersuchen.
 
-Für den separaten Debug-Build:
+**Verbindliche sechs Regressionstests auf dem Galaxy Tab A:**
+
+1. Vorhandene Soundboards, Sounds und Einstellungen erhalten.
+2. Einzelne Sounds abspielen und stoppen.
+3. Ordnerwiedergabe einschließlich Shuffle ohne Wiederholung.
+4. Boardwechsel und Stop-All.
+5. Lock-Modus mit unmittelbarer Auslösung, ohne unbeabsichtigte Mehrfachauslösung.
+6. Backup-/Restore-Bildschirm öffnen; Einstellungen kontrollieren (kein Restore notwendig).
+
+Für v1.2.0 wurden alle sechs Prüfungen erfolgreich durchgeführt.
+
+### Getestete APK als GitHub-Asset veröffentlichen
 
 ```bash
-./gradlew installDebug
+VERSION=1.2.0
+cp app/build/outputs/apk/release/app-release.apk \
+  "app/build/outputs/apk/release/Soundboard-NG-v${VERSION}.apk"
+
+sha256sum app/build/outputs/apk/release/app-release.apk \
+  "app/build/outputs/apk/release/Soundboard-NG-v${VERSION}.apk"
 ```
 
-Auf dem Tablet wurden `1.1.1` (Release) und `1.1.1-dev` (Debug) erfolgreich angezeigt.
-
-### APK auf GitHub veröffentlichen
-
-Die APK gehört als Asset zum GitHub-Release, **nicht als Binärdatei ins Git-Repository**.
+Die Prüfsummen müssen identisch sein. Die APK gehört als **Asset zum bestehenden GitHub-Release**, nicht als Binärdatei ins Repository. Upload per **Edit release → Asset hinzufügen → Update release** oder:
 
 ```bash
-VERSION=1.1.1
-gh release upload "v$VERSION"   app/build/outputs/apk/release/app-release.apk
+gh release upload "v$VERSION" \
+  "app/build/outputs/apk/release/Soundboard-NG-v${VERSION}.apk"
 
-gh release view "v$VERSION" --json assets   --jq '.assets[] | {name, size, downloadCount}'
+gh release view "v$VERSION" \
+  --json tagName,isDraft,isPrerelease,assets \
+  --jq '{tag: .tagName, draft: .isDraft, prerelease: .isPrerelease, assets: [.assets[] | {name: .name, size: .size}]}'
 ```
 
-Beim ersten Upload hieß das Asset noch `app-release.apk`. Daher wurde die Asset-ID abgefragt:
+Für v1.2.0 wurde `Soundboard-NG-v1.2.0.apk` (2.338.545 Bytes) veröffentlicht: https://github.com/lattemacchiato/soundboard/releases/tag/v1.2.0
+
+### `develop` nach dem Release synchronisieren
 
 ```bash
-gh api "repos/lattemacchiato/soundboard/releases/tags/v$VERSION"   --jq '.assets[] | {id, name}'
+git fetch origin
+git switch develop
+git status -sb
+git merge-base --is-ancestor develop origin/main
+echo "Fast-Forward möglich (0=ja, 1=nein): $?"
 ```
 
-Und mit der tatsächlich zurückgegebenen ID umbenannt:
+Nur bei Rückgabewert 0:
 
 ```bash
-gh api --method PATCH   repos/lattemacchiato/soundboard/releases/assets/<ASSET-ID>   -f name="Soundboard-NG-v${VERSION}.apk"   --jq '{id, name, size, state}'
+git merge --ff-only origin/main
+./gradlew check
+git status -sb
+git push origin develop
+
+git rev-parse main
+git rev-parse develop
+git rev-parse origin/develop
 ```
 
-Das Umbenennen ändert APK-Inhalt und Signatur nicht. **Zielname für jedes künftige Release:** `Soundboard-NG-vX.Y.Z.apk`.
+Vollständig gemergte Release-Please-Branches identifizieren und **erst nach Prüfung** löschen:
 
-Bestätigtes Release: https://github.com/lattemacchiato/soundboard/releases/tag/v1.1.1
+```bash
+git fetch origin --prune
+git branch -a | grep release-please
+git branch -r --merged origin/main | grep release-please
+```
 
-**Entscheidung:** Die Veröffentlichung einer signierten APK ist ab jetzt ein fester, zunächst manueller Bestandteil jedes Releases.
+### Release und Debug parallel auf Samsung S24
 
-## 7. Nächstes Feature: „Play Folder“
+```bash
+# Release (v1.2.0)
+adb install -r app/build/outputs/apk/release/app-release.apk
 
-**Grundidee:** Zusätzlich zu Einzeldateien kann eine Sound-Kachel einen Ordner mit Audiodateien repräsentieren und dessen Dateien automatisch nacheinander abspielen.
+# Debug neu bauen UND installieren
+./gradlew assembleDebug
+adb install -r app/build/outputs/apk/debug/app-debug.apk
 
-| Aspekt | Spezifikation |
-|---|---|
-| Ordnerauswahl | Android Storage Access Framework (SAF) |
-| Berechtigungen | Persistenter Zugriff auf ausgewählten Ordner |
-| Datenhaltung | Ordnerreferenz und Einstellungen dauerhaft speichern |
-| Alphabetisch | Sortierung nach Dateinamen |
-| Shuffle | Zufällige Reihenfolge ohne Wiederholung im Durchlauf |
-| Loop aus | Ende nach letzter Datei |
-| Loop + alphabetisch | Gleiche Reihenfolge erneut |
-| Loop + Shuffle | Neue Mischung pro Durchlauf |
-| Kachelbedienung | Start/Stopp analog zur Sound-Kachel |
-| Anzeige | Reihenfolge und Loop-Status erkennbar |
-| Navigation | Zunächst keine Next-/Previous-Schaltflächen |
-| Boardwechsel | Bestehende Stopp-Regeln gelten |
-| Fehlerfälle | Leere Ordner, fehlende/unlesbare Dateien, Berechtigungsverlust abfangen |
+# Installierte Versionen prüfen
+adb shell dumpsys package de.lattemacchiato.soundboardng \
+  | grep -E 'versionCode=|versionName='
+adb shell dumpsys package de.lattemacchiato.soundboardng.debug \
+  | grep -E 'versionCode=|versionName='
+```
 
-**Loop gilt für den gesamten Ordnerdurchlauf, nicht für eine einzelne Datei.**
+Erwartet: Release `1.2.0` (`1002000`), Debug `1.2.0-dev` (`1002000`). Ein Build allein aktualisiert **nicht** die installierte App. Der APK-Dateiname ist für Updates unerheblich; entscheidend sind Application ID, Versionscode und Signatur. Bei mehreren verbundenen Geräten `adb -s <SERIENNUMMER>` verwenden.
 
-Vor Implementierung untersuchen: Datenmodell, Audio-Engine und Completion-Callbacks, Ordneraktualisierung, Persistenz, UI, Fehlerbehandlung, Tests. Im neuen Chat mit einer kleinen Bestandsaufnahme der relevanten Quelldateien beginnen.
+## 7. Abgeschlossenes Feature: „Play Folder“
+
+Mit v1.2.0 veröffentlicht: Ordnerauswahl über das Android Storage Access Framework, persistenter Ordnerzugriff, alphabetische Reihenfolge und Shuffle ohne Wiederholung je Durchlauf. Loop gilt für den gesamten Ordnerdurchlauf, bei Loop + Shuffle wird für jeden Durchlauf neu gemischt. Die Ordnerwiedergabe folgt den bestehenden Stopp-Regeln bei Boardwechsel. Tests für Shuffle und Ordnerdatenmodell sind vorhanden.
+
+Für Erweiterungen die aktuelle Implementierung in Datenmodell, Audio-Engine und UI prüfen.
 
 ## 8. Backlog
 
 | Thema | Stand |
 |---|---|
-| **Play Folder** | **Nächstes Feature** |
+| Play Folder | Mit v1.2.0 veröffentlicht |
+| Performance Lock Mode | Mit v1.2.0 veröffentlicht |
 | Automatische Synchronisierung der Release-PR-Versionsdateien | Zurückgestellt |
 | CI-Trigger nach automatischem Bot-Commit | Teil der zurückgestellten Release-Automatisierung |
 | Signierte APK automatisch an GitHub-Release anhängen | Zurückgestellt; manueller Upload Pflicht |
+| Kotlin-Deprecation `Modifier.menuAnchor()` | Technische Wartung, offen |
 | F-Droid-Veröffentlichung | Weiterhin Projektziel |
-| Erneute Upstream-Contribution / Merge-Angebot an `508-dev` | Ungefähr drei Monate nach Ende Oktober 2026 erneut prüfen |
+| Erneute Upstream-Contribution / Merge-Angebot an `508-dev` | Später erneut prüfen |
 | Weitere Features | Nach jeder Implementierung gemeinsam priorisieren |
 
-Für eine spätere Vollautomatisierung wurden Fine-Grained PAT oder GitHub-App-Token diskutiert. **Keine dieser Lösungen wurde umgesetzt.** Der derzeitige halbautomatische Prozess ist bewusst beibehalten worden.
+Für eine spätere Vollautomatisierung wurden Fine-Grained PAT oder GitHub-App-Token diskutiert. Noch nicht umgesetzt.
 
 ## 9. Wichtigste Erkenntnisse
 
 1. Ein erfolgreicher Release-Please-Lauf bedeutet **nicht**, dass eine installierbare APK als Asset vorliegt.
-2. Die Android-Versionsdateien werden bislang durch `sync-version.sh` synchronisiert; Release Please allein genügt nicht.
+2. Release Please aktualisiert `version.txt`; abgeleitete Dateien werden weiterhin mit `sync-version.sh` synchronisiert.
 3. `GITHUB_TOKEN`-Folge-Workflows und verpflichtende PR-Checks erfordern besondere Sorgfalt.
-4. F-Droid benötigt die Versionsangaben als Literale in Gradle.
-5. Release- und Debug-App sind getrennte Installationen.
-6. Für Updates muss der ursprüngliche Release-Signaturschlüssel erhalten bleiben.
-7. Die SDK-Umgebungsvariablen müssen in neuen Shell-Sitzungen ggf. erneut gesetzt werden.
-8. Der Name des hochgeladenen GitHub-Assets muss ausdrücklich kontrolliert werden.
-9. `docs/deployment.md` enthält teilweise ältere bzw. geplante Verfahren; im Zweifel aktuelle Workflows und GitHub-Ausgaben prüfen.
-10. Nach jedem abgeschlossenen Feature gemeinsam den nächsten Backlog-Punkt bestimmen, statt Infrastrukturthemen unbegrenzt auszubauen.
+4. Conventional Commits durch normale Merge-Commits für Release Please erhalten.
+5. `./gradlew check` vor jedem Commit, Merge und Release ausführen.
+6. F-Droid benötigt Versionsangaben als Literale in Gradle.
+7. Release und Debug sind getrennte Installationen.
+8. Für Updates muss der ursprüngliche Release-Signierschlüssel erhalten bleiben.
+9. Signaturen explizit mit `apksigner` prüfen; Dateiname allein ist kein Signaturnachweis.
+10. Build und Installation sind getrennte Schritte; Debug nach dem Release neu bauen **und** installieren.
+11. Nach Release `develop` synchronisieren und alte Release-Branches prüfen.
+12. `docs/deployment.md` enthält teilweise ältere Verfahren; aktuelle Workflows und GitHub-Ausgaben haben Vorrang.
 
 ## 10. Release-Checkliste
 
-- [ ] Release-PR erstellt
-- [ ] `sync-version.sh` auf Release-PR-Branch ausgeführt
-- [ ] Versionskonsistenz geprüft
-- [ ] Generierte Dateien committet und gepusht
+### Vorbereitung
+
+- [ ] Features getestet und in `develop` integriert
+- [ ] `./gradlew check` erfolgreich
+- [ ] PR `develop` → `main`, Pflichtchecks grün
+- [ ] Normaler Merge-Commit, kein Squash
+
+### Release Please
+
+- [ ] Release-PR erstellt und korrekter Branch ausgecheckt
+- [ ] `./scripts/sync-version.sh` ausgeführt
+- [ ] `./scripts/sync-version.sh --check` erfolgreich
+- [ ] `./gradlew check` erfolgreich
+- [ ] Abgeleitete Dateien committet und gepusht
 - [ ] Pflichtchecks `build` und `conventional-commit` grün
-- [ ] Release-PR gemergt
-- [ ] Tag und GitHub-Release vorhanden
+- [ ] Release-PR gemergt; Tag und GitHub-Release vorhanden
+
+### APK und Gerätetests
+
+- [ ] Lokaler `main` entspricht Release-Tag
+- [ ] `./gradlew check` erfolgreich
 - [ ] Signierte Release-APK gebaut
-- [ ] APK-Version und Signatur geprüft
-- [ ] APK als `Soundboard-NG-vX.Y.Z.apk` hochgeladen
-- [ ] Release-Asset kontrolliert
-- [ ] Optional: Update auf Testgerät geprüft
-- [ ] `main` in `develop` integriert und gepusht
-- [ ] Entwicklungsstand und Versionskonsistenz geprüft
+- [ ] APK-Version und v2-Signatur geprüft
+- [ ] Update auf Galaxy Tab A erfolgreich; App-Daten erhalten
+- [ ] Alle sechs Regressionstests erfolgreich
+- [ ] Getestete APK als `Soundboard-NG-vX.Y.Z.apk` kopiert
+- [ ] SHA-256-Prüfsummen identisch
+- [ ] APK als GitHub-Release-Asset hochgeladen und kontrolliert
+
+### Abschluss
+
+- [ ] `develop` per geprüftem Fast-Forward synchronisiert
+- [ ] `./gradlew check` auf `develop` erfolgreich
+- [ ] `develop` gepusht
+- [ ] Alte Release-Please-Branches geprüft und bereinigt
+- [ ] Debug-APK neu gebaut und auf S24 installiert
+- [ ] Release- und Debug-Versionsnummern geprüft
+- [ ] Runbook und Backlog aktualisiert
 
 ## 11. Wichtige Dateien
 
-- `docs/deployment.md` – ausführlichere bestehende Deployment-Dokumentation
+- `docs/deployment.md` – ergänzende Deployment-Dokumentation (teils älter)
 - `.github/workflows/ci.yml` – CI
 - `.github/workflows/release-please.yml` – Release Please
+- `.github/workflows/sync-release-version.yml` – Release-Version-Synchronisierung (aktuellen Einsatz prüfen)
 - `release-please-config.json` – Release-Konfiguration
 - `.release-please-manifest.json` – Release-Manifest
 - `version.txt` – Versionsquelle
-- `scripts/sync-version.sh` – abgeleitete Versionen
+- `scripts/sync-version.sh` – abgeleitete Versionsdateien
 - `app/build.gradle.kts` – Android-Konfiguration und Signierung
 - `CHANGELOG.md` – Release-Änderungen
+- `docs/screenshots/` – App-Screenshots
