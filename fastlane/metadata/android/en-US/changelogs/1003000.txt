@@ -1,0 +1,13 @@
+Features:
+
+- add per-sound playback segments
+- explain notification permission and expose settings
+- explain notification permission and expose settings
+- show per-sound tap behavior indicator
+- show per-sound tap behavior indicators
+
+Bug Fixes:
+
+- correct screenshot file permissions
+- replace deprecated Material 3 menu anchor API
+- replace deprecated Material 3 menu anchor API
