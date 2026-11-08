@@ -8,8 +8,9 @@ and a simplified interface for use during live performances.
 ## Features
 
 - Multiple soundboards with configurable sound button sizes
-- Play, pause, restart and configurable tap behaviour
+- Play, pause, restart and per-sound configurable tap behaviour (Pause/Resume or Stop/Restart), with status indicators
 - Independent sound volume and per-sound fade-in/fade-out
+- Per-sound playback segments with precise start/end timestamps, preview and looping
 - Looping and optional simultaneous playback
 - Play individual audio files or entire folders
 - Folder playback in alphabetical or shuffled order
@@ -17,6 +18,7 @@ and a simplified interface for use during live performances.
 - Performance lock mode with immediate touch response
 - JSON configuration export and portable ZIP backups with audio
 - Light, dark and system appearance
+- Notification permission status and shortcut to Android settings (Android 13+)
 
 ## Screenshots
 
@@ -25,6 +27,12 @@ and a simplified interface for use during live performances.
 | Edit mode | Performance lock mode |
 |:---:|:---:|
 | <a href="docs/screenshots/soundboard-edit.jpg"><img src="docs/screenshots/soundboard-edit.jpg" width="320" alt="Soundboard edit mode"></a> | <a href="docs/screenshots/soundboard-locked.jpg"><img src="docs/screenshots/soundboard-locked.jpg" width="320" alt="Soundboard performance lock mode"></a> |
+
+### Playback segment configuration
+
+| Sound options (long press) | Playback segment |
+|:---:|:---:|
+| <a href="docs/screenshots/sound-longpress-menu.jpg"><img src="docs/screenshots/sound-longpress-menu.jpg" width="280" alt="Sound options with playback segment setting"></a> | <a href="docs/screenshots/playback-segment.jpg"><img src="docs/screenshots/playback-segment.jpg" width="280" alt="Playback segment configuration with start and end positions"></a> |
 
 ### Configuration and management
 
@@ -60,6 +68,27 @@ In addition to individual audio files, Soundboard NG supports playing entire fol
 - **Alphabetical:** Play files in filename order.
 - **Shuffle:** Play every file once in random order before repeating.
 - **Loop:** Optionally repeat folder playback cycles.
+
+## Playback segments
+
+Individual audio files can be configured to play only a selected portion
+instead of the entire recording.
+
+- Open a sound's options and select **Playback segment**.
+- Set the start and end positions using the sliders or precise timestamps
+  in `mm.ss.SSS` format.
+- Leave the end position empty to play until the end of the file.
+- Use **Preview** to audition the selected segment before saving.
+- Use **Reset** to restore playback of the complete file.
+- Looping repeats the selected segment rather than the complete recording.
+- Fade-in and fade-out also apply to playback segments.
+
+Segment settings are stored with the soundboard and preserved in backups.
+Existing soundboards continue to play complete files by default.
+
+**Known issue:** On some devices, dragging a slider directly from its
+rightmost position may not respond immediately. Tap elsewhere on the slider
+first, or use the precise timestamp fields instead.
 
 ## Privacy and cost
 

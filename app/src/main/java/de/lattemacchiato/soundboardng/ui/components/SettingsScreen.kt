@@ -1,5 +1,10 @@
 package de.lattemacchiato.soundboardng.ui.components
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -22,6 +27,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -30,6 +36,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -41,7 +48,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import de.lattemacchiato.soundboardng.R
 import de.lattemacchiato.soundboardng.SoundboardApp
 import de.lattemacchiato.soundboardng.data.TapBehavior
 import de.lattemacchiato.soundboardng.data.ThemeMode
@@ -52,6 +65,31 @@ import java.util.Locale
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
     val app = LocalContext.current.applicationContext as SoundboardApp
+    val context = LocalContext.current
+    var notificationsEnabled by remember { mutableStateOf(false) }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        DisposableEffect(lifecycleOwner, context) {
+            val observer =
+                LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        notificationsEnabled =
+                            ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.POST_NOTIFICATIONS,
+                            ) == PackageManager.PERMISSION_GRANTED
+                    }
+                }
+
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose {
+                lifecycleOwner.lifecycle.removeObserver(observer)
+            }
+        }
+    }
+
     val scope = rememberCoroutineScope()
     val locked by app.lockSettings.locked.collectAsState()
     val tap by app.repository.defaultTapBehavior.collectAsState(initial = TapBehavior.PAUSE_RESUME)
@@ -103,7 +141,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     readOnly = true,
                     enabled = !locked,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = tapMenuExpanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable),
                 )
                 ExposedDropdownMenu(
                     expanded = tapMenuExpanded,
@@ -249,6 +287,39 @@ fun SettingsScreen(onBack: () -> Unit) {
                 enabled = !locked,
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                HorizontalDivider()
+                SettingsSectionTitle(stringResource(R.string.notification_settings_section))
+
+                Text(
+                    text = stringResource(R.string.notification_settings_title),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    text =
+                        stringResource(
+                            if (notificationsEnabled) {
+                                R.string.notification_settings_enabled
+                            } else {
+                                R.string.notification_settings_disabled
+                            },
+                        ),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                OutlinedButton(
+                    onClick = {
+                        val intent =
+                            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                            }
+                        context.startActivity(intent)
+                    },
+                    enabled = !locked,
+                ) {
+                    Text(stringResource(R.string.notification_settings_open))
+                }
+            }
         }
     }
 }

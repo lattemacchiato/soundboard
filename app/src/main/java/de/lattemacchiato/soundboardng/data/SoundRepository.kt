@@ -220,6 +220,14 @@ class SoundRepository(
         releasedUris.forEach { releaseUriPermission(it.toUri()) }
     }
 
+    suspend fun setSegment(
+        id: String,
+        startMs: Long,
+        endMs: Long?,
+    ) {
+        store.updateData { it.withSegment(id, startMs, endMs) }
+    }
+
     suspend fun setLoop(
         id: String,
         loop: Boolean,

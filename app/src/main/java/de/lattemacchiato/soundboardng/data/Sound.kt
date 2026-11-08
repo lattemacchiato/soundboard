@@ -25,6 +25,10 @@ data class Sound(
     val tapBehavior: TapBehavior = TapBehavior.PAUSE_RESUME,
     val fadeInMs: Int = 0,
     val fadeOutMs: Int = 0,
+    /** Start of the playable segment, in milliseconds. */
+    val startPositionMs: Long = 0L,
+    /** End of the playable segment, or null to play until the end of the file. */
+    val endPositionMs: Long? = null,
 ) {
     /**
      * Linear amplitude multiplier for ExoPlayer's `volume` property.
