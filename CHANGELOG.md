@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.3.0](https://github.com/lattemacchiato/soundboard/compare/v1.2.0...v1.3.0) (2026-11-08)
+
+
+### Features
+
+* add per-sound playback segments ([af74654](https://github.com/lattemacchiato/soundboard/commit/af74654868082c775ce3dae5ac6a442b2cc8323d))
+* explain notification permission and expose settings ([627b37a](https://github.com/lattemacchiato/soundboard/commit/627b37a520c5cbdacf623b183e902e1082876913))
+* explain notification permission and expose settings ([c0ad858](https://github.com/lattemacchiato/soundboard/commit/c0ad858715ae3c5cea173edfab6f1e1c429f85fc))
+* show per-sound tap behavior indicator ([ae1f481](https://github.com/lattemacchiato/soundboard/commit/ae1f481695e50c75866afa633f8c0282904b8005))
+* show per-sound tap behavior indicators ([4a438db](https://github.com/lattemacchiato/soundboard/commit/4a438db0d9c7356c5f3b01b1fb9bd1b1912f7816))
+
+
+### Bug Fixes
+
+* correct screenshot file permissions ([ef4d4e8](https://github.com/lattemacchiato/soundboard/commit/ef4d4e8a449fcce0d74a0f00a9edef5c31818d2c))
+* replace deprecated Material 3 menu anchor API ([9408105](https://github.com/lattemacchiato/soundboard/commit/9408105cea218fbe475a9e8ce6cac8293b350bfb))
+* replace deprecated Material 3 menu anchor API ([4700bce](https://github.com/lattemacchiato/soundboard/commit/4700bce380d1144b21078325b1222ca87bcd149e))
+
 ## [1.2.0](https://github.com/lattemacchiato/soundboard/compare/v1.1.1...v1.2.0) (2026-11-07)
 
 
