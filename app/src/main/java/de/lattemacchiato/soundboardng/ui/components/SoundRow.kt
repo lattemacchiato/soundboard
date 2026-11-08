@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
@@ -152,14 +153,34 @@ fun SoundRow(
                         }
                     }.joinToString(" · ")
 
-                if (playbackLabel.isNotEmpty()) {
-                    Text(
-                        text = playbackLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                val hasSegment =
+                    row.sound.type == SoundType.FILE &&
+                        (row.sound.startPositionMs > 0L || row.sound.endPositionMs != null)
+
+                if (playbackLabel.isNotEmpty() || hasSegment) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        if (playbackLabel.isNotEmpty()) {
+                            Text(
+                                text = playbackLabel,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false),
+                            )
+                        }
+                        if (hasSegment) {
+                            Icon(
+                                imageVector = Icons.Filled.ContentCut,
+                                contentDescription = "Custom playback segment",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(14.dp),
+                            )
+                        }
+                    }
                 }
 
                 if (row.isUnavailable) {

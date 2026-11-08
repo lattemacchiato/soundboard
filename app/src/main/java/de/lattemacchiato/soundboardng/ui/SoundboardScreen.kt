@@ -2,6 +2,7 @@ package de.lattemacchiato.soundboardng.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -61,6 +62,7 @@ import de.lattemacchiato.soundboardng.ui.components.DrawerScaffold
 import de.lattemacchiato.soundboardng.ui.components.RenameDialog
 import de.lattemacchiato.soundboardng.ui.components.ReorderableSoundList
 import de.lattemacchiato.soundboardng.ui.components.SoundRow
+import de.lattemacchiato.soundboardng.ui.components.SoundSegmentDialog
 import de.lattemacchiato.soundboardng.ui.components.VolumeDialDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -100,6 +102,7 @@ fun SoundboardScreen(
     // Which sound each transient piece of UI is about, or null when closed.
     var volumeTarget by remember { mutableStateOf<Sound?>(null) }
     var optionsTarget by remember { mutableStateOf<Sound?>(null) }
+    var segmentTarget by remember { mutableStateOf<Sound?>(null) }
     var deleteTarget by remember { mutableStateOf<Sound?>(null) }
     var renameTarget by remember { mutableStateOf<Sound?>(null) }
 
@@ -287,6 +290,28 @@ fun SoundboardScreen(
                         )
                     },
                 )
+                if (currentSound.type == SoundType.FILE) {
+                    ListItem(
+                        headlineContent = { Text("Playback segment") },
+                        supportingContent = {
+                            Text(
+                                if (currentSound.startPositionMs == 0L &&
+                                    currentSound.endPositionMs == null
+                                ) {
+                                    "Play complete file"
+                                } else {
+                                    "Custom playback range"
+                                },
+                            )
+                        },
+                        modifier =
+                            Modifier.clickable {
+                                optionsTarget = null
+                                segmentTarget = currentSound
+                            },
+                    )
+                }
+
                 if (currentSound.type == SoundType.FOLDER) {
                     Column(
                         modifier =
@@ -370,6 +395,18 @@ fun SoundboardScreen(
                 FadeSlider("Fade-in", currentSound.fadeInMs) { viewModel.setFade(sound.id, true, it) }
                 FadeSlider("Fade-out", currentSound.fadeOutMs) { viewModel.setFade(sound.id, false, it) }
             }
+        }
+    }
+
+    if (!locked) {
+        segmentTarget?.let { sound ->
+            SoundSegmentDialog(
+                sound = sound,
+                onSave = { startMs, endMs ->
+                    viewModel.setSegment(sound.id, startMs, endMs)
+                },
+                onDismiss = { segmentTarget = null },
+            )
         }
     }
 

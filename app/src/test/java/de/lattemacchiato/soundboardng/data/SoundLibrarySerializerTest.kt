@@ -177,4 +177,47 @@ class SoundLibrarySerializerTest {
             assertEquals(37, sound.volumePercent)
             assertEquals(true, sound.loop)
         }
+
+    @Test
+    fun `legacy sound without segment fields uses full file defaults`() =
+        runTest {
+            val json =
+                """{"sounds":[{"id":"a","uri":"content://rain","name":"Rain"}]}"""
+
+            val restored =
+                SoundLibrarySerializer.readFrom(
+                    ByteArrayInputStream(json.toByteArray()),
+                )
+
+            val sound = restored.sounds.single()
+            assertEquals(0L, sound.startPositionMs)
+            assertEquals(null, sound.endPositionMs)
+        }
+
+    @Test
+    fun `segment boundaries survive serialization round trip`() =
+        runTest {
+            val original =
+                SoundLibrary()
+                    .withSound("a", "content://rain", "Rain")
+                    .withSound("b", "content://fan", "Fan")
+                    .withSegment("a", 10_000L, 25_000L)
+                    .withSegment("b", 5_000L, null)
+
+            val bytes =
+                ByteArrayOutputStream()
+                    .also { SoundLibrarySerializer.writeTo(original, it) }
+                    .toByteArray()
+
+            val restored =
+                SoundLibrarySerializer.readFrom(
+                    ByteArrayInputStream(bytes),
+                )
+
+            assertEquals(original, restored)
+            assertEquals(10_000L, restored.find("a")?.startPositionMs)
+            assertEquals(25_000L, restored.find("a")?.endPositionMs)
+            assertEquals(5_000L, restored.find("b")?.startPositionMs)
+            assertEquals(null, restored.find("b")?.endPositionMs)
+        }
 }

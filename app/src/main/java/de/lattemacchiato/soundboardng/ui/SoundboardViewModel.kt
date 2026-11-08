@@ -15,9 +15,12 @@ import de.lattemacchiato.soundboardng.data.TapBehavior
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.seconds
 
 /** One row on the board: the persisted sound plus its live playback status. */
 data class SoundRowState(
@@ -35,6 +38,17 @@ class SoundboardViewModel(
 ) : ViewModel() {
     val locked: StateFlow<Boolean> = lockSettings.locked
 
+    private val pendingSegmentUpdates = mutableSetOf<String>()
+
+    private val currentSounds: StateFlow<List<Sound>> =
+        repository.sounds.stateIn(
+            viewModelScope,
+            SharingStarted.Eagerly,
+            emptyList(),
+        )
+
+    private fun currentSound(sound: Sound): Sound = currentSounds.value.firstOrNull { it.id == sound.id } ?: sound
+
     fun setLocked(value: Boolean) = lockSettings.setLocked(value)
 
     val rows: StateFlow<List<SoundRowState>> =
@@ -49,15 +63,22 @@ class SoundboardViewModel(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), false)
 
     fun toggle(sound: Sound) {
-        if (sound.tapBehavior == TapBehavior.STOP_RESTART &&
-            engine.statuses.value[sound.id] == PlaybackStatus.PLAYING &&
-            !engine.isFadingOut(sound.id)
+        if (sound.id in pendingSegmentUpdates) return
+
+        val current = currentSound(sound)
+
+        if (current.tapBehavior == TapBehavior.STOP_RESTART &&
+            engine.statuses.value[current.id] == PlaybackStatus.PLAYING &&
+            !engine.isFadingOut(current.id)
         ) {
-            engine.stop(sound) // Fade out, then reset to 0:00.
-        } else if (sound.tapBehavior == TapBehavior.STOP_RESTART && engine.isFadingOut(sound.id)) {
-            engine.restart(sound)
+            engine.stop(current)
+        } else if (
+            current.tapBehavior == TapBehavior.STOP_RESTART &&
+            engine.isFadingOut(current.id)
+        ) {
+            engine.restart(current)
         } else {
-            engine.toggle(sound)
+            engine.toggle(current)
         }
     }
 
@@ -78,7 +99,42 @@ class SoundboardViewModel(
         viewModelScope.launch { if (!locked.value) repository.setFade(id, fadeIn, durationMs) }
     }
 
-    fun restart(sound: Sound) = engine.restart(sound)
+    fun restart(sound: Sound) {
+        if (sound.id in pendingSegmentUpdates) return
+        engine.restart(currentSound(sound))
+    }
+
+    fun setSegment(
+        id: String,
+        startMs: Long,
+        endMs: Long?,
+    ) {
+        if (locked.value || id in pendingSegmentUpdates) return
+
+        pendingSegmentUpdates.add(id)
+
+        viewModelScope.launch {
+            try {
+                if (!locked.value) {
+                    repository.setSegment(id, startMs, endMs)
+                    engine.release(id)
+
+                    withTimeoutOrNull(5.seconds) {
+                        currentSounds.first { sounds ->
+                            sounds.none { it.id == id } ||
+                                sounds.any { sound ->
+                                    sound.id == id &&
+                                        sound.startPositionMs == startMs &&
+                                        sound.endPositionMs == endMs
+                                }
+                        }
+                    }
+                }
+            } finally {
+                pendingSegmentUpdates.remove(id)
+            }
+        }
+    }
 
     fun setLoop(
         id: String,
