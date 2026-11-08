@@ -52,6 +52,7 @@ class SoundboardEngine(
     private val context: Context,
 ) {
     private val players = mutableMapOf<String, ExoPlayer>()
+    private val playerSounds = mutableMapOf<String, Sound>()
     private val soundTypes = mutableMapOf<String, SoundType>()
     private val folderResolver = FolderAudioResolver(context.contentResolver)
     private val folderLoadJobs = mutableMapOf<String, Job>()
@@ -61,9 +62,11 @@ class SoundboardEngine(
         mutableMapOf<String, PlaybackOrder>()
     private val fadeScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val fadeJobs = mutableMapOf<String, Job>()
-    private val fadeFactors = mutableMapOf<String, Float>()
-    private val fadingOut = mutableSetOf<String>()
 
+    private val segmentFadeJobs = mutableMapOf<String, Job>()
+    private val fadeFactors = mutableMapOf<String, Float>()
+    private val segmentFadeFactors = mutableMapOf<String, Float>()
+    private val fadingOut = mutableSetOf<String>()
     var allowSimultaneousPlayback: Boolean = true
         private set
 
@@ -102,8 +105,64 @@ class SoundboardEngine(
         fadingOut.remove(id)
     }
 
+    private fun cancelSegmentFade(id: String) {
+        segmentFadeJobs.remove(id)?.cancel()
+        segmentFadeFactors.remove(id)
+        updateVolume(id)
+    }
+
+    private fun startPlaybackFadeMonitor(
+        sound: Sound,
+        player: ExoPlayer,
+    ) {
+        cancelSegmentFade(sound.id)
+
+        val fadeOutMs = sound.fadeOutMs.coerceIn(0, 5000)
+
+        segmentFadeFactors[sound.id] = 1f
+
+        segmentFadeJobs[sound.id] =
+            fadeScope.launch {
+                var previousPositionMs = player.currentPosition
+                while (true) {
+                    val positionMs = player.currentPosition
+
+                    if (positionMs < previousPositionMs) {
+                        // Playback jumped backwards (loop or seek).
+                        segmentFadeFactors[sound.id] = 1f
+                        fadeFactors[sound.id] = 0f
+                        updateVolume(sound.id)
+                        animateFade(sound.id, 1f, sound.fadeInMs)
+                    }
+
+                    previousPositionMs = positionMs
+                    val durationMs = player.duration
+
+                    val factor =
+                        if (fadeOutMs == 0 || durationMs == C.TIME_UNSET || durationMs <= 0L) {
+                            1f
+                        } else {
+                            val remainingMs = durationMs - positionMs
+                            (remainingMs.toFloat() / fadeOutMs)
+                                .coerceIn(0f, 1f)
+                        }
+
+                    if (segmentFadeFactors[sound.id] != factor) {
+                        segmentFadeFactors[sound.id] = factor
+                        updateVolume(sound.id)
+                    }
+
+                    delay(16L)
+                }
+            }
+    }
+
     private fun updateVolume(id: String) {
-        players[id]?.volume = (gains[id] ?: 1f) * duckFactor * (fadeFactors[id] ?: 1f)
+        players[id]?.volume =
+            (gains[id] ?: 1f) *
+            duckFactor *
+            (fadeFactors[id] ?: 1f) *
+            (segmentFadeFactors[id] ?: 1f)
     }
 
     private fun animateFade(
@@ -112,6 +171,7 @@ class SoundboardEngine(
         durationMs: Int,
         finished: () -> Unit = {},
     ) {
+        if (target == 0f) cancelSegmentFade(id)
         cancelFade(id)
         if (target == 0f) fadingOut.add(id)
         val start = fadeFactors[id] ?: 1f
@@ -206,6 +266,7 @@ class SoundboardEngine(
             players.remove(sound.id)?.release()
         }
         val player = players.getOrPut(sound.id) { buildPlayer(sound) }
+        playerSounds[sound.id] = sound
         gains[sound.id] = sound.gain
         cancelFade(sound.id)
         fadeFactors[sound.id] = 0f
@@ -228,6 +289,7 @@ class SoundboardEngine(
         player.play()
         setStatus(sound.id, PlaybackStatus.PLAYING)
         animateFade(sound.id, 1f, sound.fadeInMs)
+        startPlaybackFadeMonitor(sound, player)
     }
 
     /** Start from the beginning even if this sound is currently playing or paused. */
@@ -241,7 +303,9 @@ class SoundboardEngine(
             players.remove(sound.id)?.release()
         }
         val player = players.getOrPut(sound.id) { buildPlayer(sound) }
+        playerSounds[sound.id] = sound
         gains[sound.id] = sound.gain
+        cancelSegmentFade(sound.id)
         cancelFade(sound.id)
         fadeFactors[sound.id] = 0f
         updateVolume(sound.id)
@@ -266,6 +330,7 @@ class SoundboardEngine(
         player.play()
         setStatus(sound.id, PlaybackStatus.PLAYING)
         animateFade(sound.id, 1f, sound.fadeInMs)
+        startPlaybackFadeMonitor(sound, player)
     }
 
     /** Apply a changed loop setting without restarting a running player. */
@@ -282,6 +347,7 @@ class SoundboardEngine(
     }
 
     private fun pauseNow(id: String) {
+        cancelSegmentFade(id)
         cancelFade(id)
         players[id]?.pause()
         pausedByFocusLoss.remove(id)
@@ -331,8 +397,10 @@ class SoundboardEngine(
     fun release(id: String) {
         folderLoadJobs.remove(id)?.cancel()
         cancelFade(id)
+        cancelSegmentFade(id)
         fadeFactors.remove(id)
         players.remove(id)?.release()
+        playerSounds.remove(id)
         folderAudioFiles.remove(id)
         folderPlaybackOrders.remove(id)
         soundTypes.remove(id)
@@ -351,9 +419,13 @@ class SoundboardEngine(
         fadeJobs.clear()
         fadeFactors.clear()
         fadingOut.clear()
+        segmentFadeJobs.values.toList().forEach { it.cancel() }
+        segmentFadeJobs.clear()
+        segmentFadeFactors.clear()
         fadeScope.cancel()
         players.values.forEach(ExoPlayer::release)
         players.clear()
+        playerSounds.clear()
         soundTypes.clear()
         gains.clear()
         pausedByFocusLoss.clear()
@@ -440,6 +512,7 @@ class SoundboardEngine(
     @OptIn(UnstableApi::class)
     private fun buildPlayer(sound: Sound): ExoPlayer {
         soundTypes[sound.id] = sound.type
+        playerSounds[sound.id] = sound
 
         return ExoPlayer
             .Builder(context)
@@ -466,7 +539,21 @@ class SoundboardEngine(
                     }
 
                 if (sound.type == SoundType.FILE) {
-                    setMediaItem(MediaItem.fromUri(sound.uri.toUri()))
+                    val clipping =
+                        MediaItem.ClippingConfiguration
+                            .Builder()
+                            .setStartPositionMs(sound.startPositionMs)
+                            .setEndPositionMs(sound.endPositionMs ?: C.TIME_END_OF_SOURCE)
+                            .build()
+
+                    val mediaItem =
+                        MediaItem
+                            .Builder()
+                            .setUri(sound.uri.toUri())
+                            .setClippingConfiguration(clipping)
+                            .build()
+
+                    setMediaItem(mediaItem)
                 }
                 addListener(
                     object : Player.Listener {
@@ -498,6 +585,7 @@ class SoundboardEngine(
                             ) {
                                 // One-shot reached its end: reset so the next tap starts at zero.
                                 cancelFade(sound.id)
+                                cancelSegmentFade(sound.id)
                                 fadeFactors.remove(sound.id)
                                 pause()
                                 if (sound.type == SoundType.FOLDER) {
@@ -520,6 +608,7 @@ class SoundboardEngine(
 
                         override fun onPlayerError(error: PlaybackException) {
                             cancelFade(sound.id)
+                            cancelSegmentFade(sound.id)
                             setStatus(sound.id, PlaybackStatus.UNAVAILABLE)
                             abandonFocusIfSilent()
                         }
@@ -555,6 +644,7 @@ class SoundboardEngine(
                     .forEach { id ->
                         pausedByFocusLoss += id
                         cancelFade(id)
+                        cancelSegmentFade(id)
                         players[id]?.pause()
                         setStatus(id, PlaybackStatus.PAUSED)
                     }
@@ -567,8 +657,18 @@ class SoundboardEngine(
                 pausedByFocusLoss.toList().forEach { id ->
                     fadeFactors[id] = 1f
                     updateVolume(id)
-                    players[id]?.play()
-                    setStatus(id, PlaybackStatus.PLAYING)
+
+                    val player = players[id]
+                    val sound = playerSounds[id]
+
+                    if (player != null && sound != null) {
+                        player.play()
+                        setStatus(id, PlaybackStatus.PLAYING)
+
+                        if (sound.type == SoundType.FILE) {
+                            startPlaybackFadeMonitor(sound, player)
+                        }
+                    }
                 }
                 pausedByFocusLoss.clear()
             }
@@ -609,7 +709,7 @@ class SoundboardEngine(
 
     private fun applyDuck(factor: Float) {
         duckFactor = factor
-        players.forEach { (id, player) ->
+        players.keys.forEach { id ->
             updateVolume(id)
         }
     }

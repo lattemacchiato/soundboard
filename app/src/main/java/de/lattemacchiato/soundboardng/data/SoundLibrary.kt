@@ -112,6 +112,33 @@ data class SoundLibrary(
             },
         )
 
+    /**
+     * Updates the playable segment of a file sound.
+     *
+     * A null end means playback continues to the end of the file.
+     * Invalid ranges and folder entries are left unchanged.
+     */
+    fun withSegment(
+        id: String,
+        startMs: Long,
+        endMs: Long?,
+    ): SoundLibrary {
+        if (startMs < 0L || (endMs != null && endMs <= startMs)) return this
+
+        return withActiveSounds(
+            sounds.map { sound ->
+                if (sound.id == id && sound.type == SoundType.FILE) {
+                    sound.copy(
+                        startPositionMs = startMs,
+                        endPositionMs = endMs,
+                    )
+                } else {
+                    sound
+                }
+            },
+        )
+    }
+
     fun withLoop(
         id: String,
         loop: Boolean,
