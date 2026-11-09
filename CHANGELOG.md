@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/lattemacchiato/soundboard/compare/v1.3.0...v1.3.1) (2026-11-09)
+
+
+### Bug Fixes
+
+* **backup:** support folder sounds in full backup and restore ([3db4ae4](https://github.com/lattemacchiato/soundboard/commit/3db4ae4d2fc82aac6d1023b1dce6fdee72f52ab0))
+
 ## [1.3.0](https://github.com/lattemacchiato/soundboard/compare/v1.2.0...v1.3.0) (2026-11-08)
 
 
