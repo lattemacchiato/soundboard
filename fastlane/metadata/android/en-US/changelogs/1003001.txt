@@ -1,0 +1,3 @@
+Bug Fixes:
+
+- **backup:** support folder sounds in full backup and restore
