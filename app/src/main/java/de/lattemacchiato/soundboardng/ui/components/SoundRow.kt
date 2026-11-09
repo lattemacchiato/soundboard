@@ -1,5 +1,10 @@
 package de.lattemacchiato.soundboardng.ui.components
 
+import androidx.compose.animation.animateColor
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -34,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -67,12 +73,35 @@ fun SoundRow(
     locked: Boolean = false,
     minHeight: Dp = 64.dp,
 ) {
+    val blinkColor =
+        if (row.fadeState != null) {
+            val transition = rememberInfiniteTransition(label = "fadeBlink")
+
+            transition
+                .animateColor(
+                    initialValue = MaterialTheme.colorScheme.primaryContainer,
+                    targetValue =
+                        lerp(
+                            MaterialTheme.colorScheme.primaryContainer,
+                            MaterialTheme.colorScheme.primary,
+                            0.35f,
+                        ),
+                    animationSpec =
+                        infiniteRepeatable(
+                            animation = tween(durationMillis = 250),
+                            repeatMode = RepeatMode.Reverse,
+                        ),
+                    label = "fadeBlinkColor",
+                ).value
+        } else {
+            null
+        }
     Card(
         shape = RoundedCornerShape(CORNER_RADIUS),
         colors =
             CardDefaults.cardColors(
                 containerColor =
-                    if (row.isPlaying) {
+                    blinkColor ?: if (row.isPlaying) {
                         MaterialTheme.colorScheme.primaryContainer
                     } else {
                         MaterialTheme.colorScheme.surfaceVariant
@@ -268,7 +297,10 @@ private fun VolumePill(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.fillMaxHeight().padding(horizontal = 14.dp),
+            modifier =
+                Modifier
+                    .fillMaxHeight()
+                    .padding(horizontal = 14.dp),
         ) {
             Icon(
                 imageVector =
