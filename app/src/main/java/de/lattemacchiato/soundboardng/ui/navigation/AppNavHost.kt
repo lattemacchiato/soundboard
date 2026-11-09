@@ -79,7 +79,6 @@ fun AppNavHost(
                 } else {
                     onReturnToDrawer()
                 }
-                Unit
             }
 
             BackHandler(onBack = onBack)

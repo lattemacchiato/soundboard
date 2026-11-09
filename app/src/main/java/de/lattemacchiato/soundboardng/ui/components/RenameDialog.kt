@@ -26,8 +26,8 @@ import de.lattemacchiato.soundboardng.data.Sound
  * The field opens focused with its text fully selected — same "ready to
  * retype" convention as a system rename dialog — so a quick rename is one tap
  * plus typing, not a manual select-all first. [onRename] only fires with a
- * trimmed, non-blank result; [SoundLibrary.renamed] enforces the same rule
- * server-side, but checking here too means the Save button can simply be
+ * trimmed, non-blank result; the data layer enforces the same rule
+ * when renaming a sound, but checking here too means the Save button can simply be
  * disabled instead of silently doing nothing.
  */
 @Composable

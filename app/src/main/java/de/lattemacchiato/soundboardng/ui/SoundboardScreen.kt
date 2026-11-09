@@ -41,6 +41,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -469,7 +470,7 @@ private fun FadeSlider(
     durationMs: Int,
     onCommit: (Int) -> Unit,
 ) {
-    var value by remember(durationMs) { mutableStateOf(durationMs.toFloat()) }
+    var value by remember(durationMs) { mutableFloatStateOf(durationMs.toFloat()) }
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
         Text("$label: " + if (value < 250f) "Off" else "%.1f s".format(java.util.Locale.US, value / 1000f))
         Slider(
