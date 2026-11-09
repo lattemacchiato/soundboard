@@ -60,8 +60,8 @@ android {
         // major * 1000000 + minor * 1000 + patch. They have to stay plain
         // literals on their own lines because F-Droid's update bot regex-parses
         // both straight out of this file (see docs/deployment.md).
-        versionCode = 1003000
-        versionName = "1.3.0"
+        versionCode = 1003001
+        versionName = "1.3.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

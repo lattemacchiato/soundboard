@@ -1,351 +1,235 @@
-# Deployment
+# Deployment — Soundboard NG
 
-Releases are cut and published by GitHub Actions. Nothing is built or uploaded
-from a workstation, and no signing material leaves GitHub secrets.
+This document distinguishes the **current, tested release procedure** from optional or planned distribution channels. The procedure below was exercised for **v1.3.1 on 2026-11-09**.
 
-- `.github/workflows/release.yml` — the pipeline.
-- `.github/workflows/pr-title.yml` — guards the commit subjects it reads.
-- `scripts/sync-version.sh` — the one place the version numbers are derived.
-- `scripts/fdroid-publish.sh` — the self-hosted F-Droid repository.
+## Release policy
 
-One-time account setup is in [Setting It Up](#setting-it-up) at the bottom.
+- Develop each change on a separate feature or fix branch.
+- Run `./gradlew check` before commits, merges, and releases.
+- Merge completed changes into `develop`; prepare releases by merging `develop` into `main`.
+- Use **normal merge commits** for release PRs (do not squash or rebase them).
+- A push to `main` starts Release Please. The release is created only after its release PR is merged.
+- Do not publish an APK until a **signed release build** has been installed and smoke-tested on a physical device.
+- Never commit keystores, passwords, or signing configuration containing secrets.
 
-## The Pipeline
+## 1. Finish a feature or fix
 
-```
-merge a PR into main
-  |
-  '-> release-please grooms a "chore(main): release X.Y.Z" PR
-      |  version.txt + CHANGELOG.md, from Conventional Commit subjects
-      '-> CI tops it up with the files derived from those
-          (versionCode, versionName, store release notes)
-  |
-  '-> you merge the release PR, when you want to ship
-      |
-      '-> tag vX.Y.Z + GitHub Release
-          |
-          +-> signed APK + SHA-256 attached to the Release
-          +-> signed AAB -> Google Play, internal track
-          '-> signed APK -> self-hosted F-Droid repo (gh-pages)
+On its feature/fix branch, inspect the changes and run the full check:
+
+```bash
+./gradlew check
+git diff --check
+git status -sb
 ```
 
-Merging to `main` never ships anything on its own. Merging the *release PR* is
-the deliberate act, and it is the only one.
+Commit and push the feature branch, then merge it into `develop` using the agreed PR workflow. Before merging, confirm the relevant checks pass. Keep `develop` as the integration branch; do not release directly from a feature branch.
 
-Both jobs live in one workflow run because a tag or PR created with
-`GITHUB_TOKEN` does not start a new workflow run — a separate tag-triggered
-publish workflow would look correct and never fire.
+## 2. Promote `develop` to `main`
 
-## Versioning
+After verifying the changes on `develop`, update `main` and merge:
 
-`version.txt` is the source of truth. release-please owns it, deriving the next
-version from the Conventional Commit subjects merged since the last release:
-
-| Commit subject | Effect |
-| --- | --- |
-| `feat: ...` | minor bump (`0.1.0` → `0.2.0`) |
-| `fix: ...`, `perf: ...` | patch bump (`0.1.0` → `0.1.1`) |
-| `feat!: ...`, or a `BREAKING CHANGE:` footer | minor bump while below 1.0.0, major after |
-| `docs:`, `chore:`, `ci:`, `refactor:`, `test:`, `build:`, `style:` | no release on their own |
-
-Because the repo is pre-1.0, `bump-minor-pre-major` keeps breaking changes at
-`0.x` rather than jumping to `1.0.0`. Take that setting out of
-`.release-please-config.json` when the app is ready to promise stability.
-
-Everything else is derived by `scripts/sync-version.sh`:
-
+```bash
+git switch main
+git pull --ff-only origin main
+git fetch origin
+git merge --no-ff origin/develop
+./gradlew check
+git status -sb
+git push origin main
 ```
+
+Resolve any conflicts and rerun the checks before pushing. **The push to `main` triggers Release Please**; merely merging to `develop` does not.
+
+## 3. Prepare the Release Please PR
+
+Release Please opens a PR similar to `chore(main): release X.Y.Z`. It updates the release manifest, `version.txt`, and `CHANGELOG.md` according to the Conventional Commits merged since the last release.
+
+**Current manual step:** the bot-created release PR may show required checks such as `build` and `conventional-commit` as *Expected / Waiting for status to be reported*. In the v1.3.1 release, a human-authored push to the release branch triggered these checks.
+
+Fetch and check out the actual branch shown in the PR (example for v1.3.1):
+
+```bash
+git fetch origin
+git switch --track origin/release-please--branches--main--components--soundboard-ng
+```
+
+If the branch already exists locally, use `git switch <branch-name>` and `git pull --ff-only` instead. Do not assume the branch name will always remain identical.
+
+Synchronize Android and Fastlane versions:
+
+```bash
+bash scripts/sync-version.sh
+git status --short
+git diff --stat
+git diff
+```
+
+Check the newly generated Fastlane changelog explicitly, because an untracked file does not appear in `git diff`:
+
+```bash
+cat fastlane/metadata/android/en-US/changelogs/<versionCode>.txt
+```
+
+Replace `<versionCode>` with the actual generated number (for v1.3.1: `1003001`). Inspect the changelog and ensure the versionName/versionCode correspond to `version.txt`.
+
+Run formatting and quality checks:
+
+```bash
+./gradlew :app:ktlintTestSourceSetFormat
+./gradlew :app:ktlintMainSourceSetFormat
+git diff --check
+./gradlew check
+git status --short
+```
+
+Review any unexpected formatting changes. Stage **only the intended version-related files** (typically `app/build.gradle.kts` and the new Fastlane changelog), then commit and push:
+
+```bash
+git add app/build.gradle.kts fastlane/metadata/android/en-US/changelogs/<versionCode>.txt
+git diff --cached --check
+git commit -m "chore(release): sync Android version for X.Y.Z"
+git push origin HEAD
+```
+
+Use a `chore(release)` subject rather than `feat` or `fix`: this commit is not a new product change. Wait for **all required PR checks** to pass. Do not bypass checks or merge while they are pending.
+
+## 4. Merge the release PR
+
+On GitHub, use **Merge pull request** (normal merge, not squash/rebase) after checks pass. Release Please then creates the GitHub Release and tag `vX.Y.Z`.
+
+Update the local checkout and verify the tag:
+
+```bash
+git switch main
+git pull --ff-only origin main
+git fetch origin --tags
+git status -sb
+git tag --list 'vX.Y.Z'
+git show -s --format='%h %s' vX.Y.Z
+grep -E 'versionCode =|versionName =' app/build.gradle.kts
+```
+
+For v1.3.1, the tag resolved to merge commit `62e0db1`, and the Android version was `versionCode = 1003001`, `versionName = "1.3.1"`.
+
+## 5. Build and verify the signed APK locally
+
+A local `keystore.properties` supplies the release signing credentials; see `keystore.properties.example`. Keep the real file and keystore out of Git.
+
+```bash
+./gradlew clean assembleRelease
+ls -lh app/build/outputs/apk/release/
+```
+
+Verify the APK rather than assuming that `assembleRelease` produced a signed artifact:
+
+```bash
+APKSIGNER="$(find "$HOME/Android/Sdk/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+"$APKSIGNER" verify --verbose --print-certs \
+  app/build/outputs/apk/release/app-release.apk
+```
+
+Check for `Verifies`, the expected signer certificate, and an appropriate signing scheme. **APK Signature Scheme v2 is sufficient for Android 8.1 (API 27)**; v1 is not mandatory for that device. A build intended to support Android versions below 7.0 must also meet their signing requirements. Java native-access warnings from the verification tool are not by themselves APK signature failures.
+
+## 6. Install and smoke-test on the physical device
+
+```bash
+adb devices
+adb install -r app/build/outputs/apk/release/app-release.apk
+```
+
+Expect `Success`. `-r` updates the installed app while preserving its data. If `INSTALL_FAILED_UPDATE_INCOMPATIBLE` appears, **do not uninstall**; investigate certificate compatibility first.
+
+Minimum smoke test:
+
+1. Confirm the displayed version is correct.
+2. Confirm existing boards and sounds remain present.
+3. Play FILE and FOLDER sounds.
+4. Create a Full ZIP Backup containing folder sounds.
+5. Save the ZIP outside the app before restoring it; then restore and verify playback.
+
+For changes in other areas, add targeted regression tests. In v1.3.1, ZIP-v1 backward compatibility was separately tested during development.
+
+## 7. Publish the tested APK to the existing GitHub Release
+
+Prepare a clearly named copy and verify it is byte-for-byte identical to the tested APK:
+
+```bash
+mkdir -p dist
+cp app/build/outputs/apk/release/app-release.apk dist/Soundboard-NG-vX.Y.Z.apk
+sha256sum app/build/outputs/apk/release/app-release.apk dist/Soundboard-NG-vX.Y.Z.apk
+git status --short
+```
+
+`dist/` is a local distribution directory, not a source-code commit. The two SHA-256 values must match.
+
+Using an authenticated GitHub CLI (`gh auth status`):
+
+```bash
+gh release upload vX.Y.Z dist/Soundboard-NG-vX.Y.Z.apk \
+  --repo lattemacchiato/soundboard
+
+gh release view vX.Y.Z \
+  --repo lattemacchiato/soundboard \
+  --json assets \
+  --jq '.assets[] | "\(.name) (\(.size) bytes)"'
+```
+
+Do not use `--clobber` by default; an existing asset should not be silently overwritten. The v1.3.1 APK was published as `Soundboard-NG-v1.3.1.apk` (2,358,593 bytes; SHA-256 `e20232ccd1c79be0ccbb5edd0fff89cbe0d6eb999425e093c469790e67cca640`).
+
+## Versioning and Conventional Commits
+
+`version.txt` is the release version source of truth; Release Please updates it. `scripts/sync-version.sh` derives:
+
+```text
 version.txt
-  -> app/build.gradle.kts   versionName, and versionCode
+  -> app/build.gradle.kts: versionName and versionCode
   -> fastlane/metadata/android/<locale>/changelogs/<versionCode>.txt
 ```
 
-`versionCode` is computed, never chosen: `major * 1000000 + minor * 1000 +
-patch`. It rises with any semver bump and stays far below Play's
-2 147 483 647 ceiling. Play permanently refuses a `versionCode` it has already
-seen, in that app, forever — including one from a deleted release — so this is
-the one number in the project that must never be fudged.
+`versionCode = major * 1000000 + minor * 1000 + patch`. Keep `versionName` and `versionCode` as literal values in Gradle if downstream F-Droid tooling parses them. `scripts/sync-version.sh --check` can detect drift in CI.
 
-Both stay plain integer/string literals on their own lines in
-`app/build.gradle.kts` because F-Droid's update bot regex-parses them straight
-out of that file to notice a new version. Replacing them with an expression,
-however tidy, silently ends automatic F-Droid releases.
-
-Run `./scripts/sync-version.sh` after changing `version.txt` by hand.
-`./scripts/sync-version.sh --check` runs in CI and fails on drift.
-
-## Signing
-
-There are three signatures in play, and they are not interchangeable.
-
-| Channel | Signed by | Interchangeable with |
-| --- | --- | --- |
-| GitHub Release APK | our release key | the self-hosted F-Droid repo, and Play if the same key was uploaded to Play App Signing |
-| Self-hosted F-Droid repo | our release key | as above |
-| Google Play | Play App Signing | only itself, unless we supplied the key |
-| f-droid.org | F-Droid's own key | nothing else |
-
-Android refuses to update an installed app with a differently-signed APK, so a
-user moving between two channels with different keys has to uninstall first and
-loses their board. Two consequences worth taking seriously:
-
-- **Upload our own key to Play App Signing** at app-creation time. Google
-  otherwise generates the app signing key itself, and Play builds stop being
-  interchangeable with the ones we publish. This choice is permanent.
-- **f-droid.org builds can never match.** F-Droid builds from source and signs
-  with its own key, by design. The way out is F-Droid's
-  [reproducible builds](https://f-droid.org/docs/Reproducible_Builds/) process,
-  where F-Droid verifies its build matches ours bit-for-bit and ships our
-  signature instead. Worth pursuing later; it is not a prerequisite.
-
-CI gets the key from `RELEASE_KEYSTORE_BASE64` and friends (see
-`docs/secrets.md`) and passes them to Gradle as `SOUNDBOARD_KEYSTORE_*`
-environment variables. Locally, `keystore.properties` does the same job — see
-`keystore.properties.example`. With neither, a release build is simply
-unsigned, which is exactly what f-droid.org's build server wants.
-
-## Google Play
-
-CI uploads the AAB to the **internal** track and stops there. Promotion to
-production is a manual step in the Play Console, on purpose: a bad build never
-reaches users automatically, and Google's review queue is not hit on every
-merge.
-
-Release notes come from the same `fastlane/` files F-Droid reads, renamed at
-upload time into the `whatsnew-<locale>` layout Play expects. The R8 mapping
-file is uploaded too, without which every Play crash report is an unreadable
-obfuscated stack trace.
-
-Play needs store graphics — icon, feature graphic, screenshots — that this
-pipeline does not upload. They are set once in the Play Console UI. The text is
-in `fastlane/metadata/android/en-US/`; paste it in from there so the listings
-stay in step.
-
-## F-Droid
-
-Two independent paths, deliberately. They are not alternatives — running both
-means the app is discoverable in F-Droid's own index *and* users get new
-versions the moment CI finishes.
-
-### Self-hosted repository (automated)
-
-`scripts/fdroid-publish.sh` maintains a real F-Droid repository on the
-`gh-pages` branch, served by GitHub Pages:
-
-```
-https://508-dev.github.io/soundboard/fdroid/repo
-```
-
-An F-Droid repository is cumulative — every version ever published stays in the
-index — which is why this clones the branch and adds to it rather than deploying
-a freshly built directory. `gh-pages` *is* the store.
-
-The index is signed with the app's release key, and the resulting fingerprint is
-what clients pin. `index.html` on that branch publishes the URL and fingerprint
-together, because adding a repository without one is trust-on-first-use.
-Rotating the release key therefore forces every user to re-add the repository —
-the same blast radius as rotating it for the app itself.
-
-`fdroid/config.yml` and `fdroid/metadata/dev.co508.soundboard.yml` are the
-inputs. Store copy is *not* duplicated there: it is copied out of `fastlane/`,
-so Play and both F-Droid paths render from the same source.
-
-### f-droid.org (one-time submission, then automatic)
-
-f-droid.org builds and signs on its own infrastructure. Nothing can be pushed
-to it from GitHub Actions, ever. The interaction is a single merge request:
-
-1. Fork <https://gitlab.com/fdroid/fdroiddata>.
-2. Copy `fdroid/fdroiddata/dev.co508.soundboard.yml` to
-   `metadata/dev.co508.soundboard.yml` in the fork. Don't add a header comment
-   to it — see `fdroid/fdroiddata/README.md` for why.
-3. Run `fdroid rewritemeta` against the fork and confirm it produces no diff
-   before opening the MR — their CI fails the job otherwise. The command is in
-   `fdroid/fdroiddata/README.md`.
-4. Open the merge request, following the current
-   [Quick Start guide](https://f-droid.org/docs/Submitting_to_F-Droid_Quick_Start_Guide/)
-   — check their docs rather than trusting this file to stay current.
-
-Once merged, `UpdateCheckMode: Tags` makes their bot watch this repo for new
-`v*` tags and `AutoUpdateMode: Version` makes it read the version literals out
-of `app/build.gradle.kts` at that tag and add a build entry itself. From then
-on, tagging a release is the whole interaction. Expect days of lag: their build
-cycle is not ours.
-
-**Two things to verify before submitting**, because both would fail on their
-builder rather than ours:
-
-- `gradle/gradle-daemon-jvm.properties` pins the Gradle daemon to Java 25 and
-  supplies Foojay download URLs. If F-Droid's builder does not have that JDK and
-  cannot fetch one, the build fails there while passing everywhere else. The fix
-  is to drop the pin.
-- `./gradlew assembleRelease` must work from a clean checkout with no
-  `keystore.properties` and no network beyond declared Gradle dependencies.
-
-Native-library stripping is already handled: `app/build.gradle.kts` sets
-`packaging { jniLibs { keepDebugSymbols += "**/*.so" } }`, so the prebuilt `.so`
-files arriving via AARs (androidx datastore, graphics-path) are packaged exactly
-as upstream shipped them instead of being re-stripped by whichever NDK the
-builder happens to have. Without it, F-Droid's APK check flags those libraries
-as differing from ours. See
-<https://f-droid.org/docs/Reproducible_Builds/#native-library-stripping>.
-
-## Cutting A Release By Hand
-
-If the automation is broken and something has to ship:
-
-```bash
-# 1. Set the version and regenerate everything derived from it.
-printf '0.2.0\n' > version.txt
-./scripts/sync-version.sh
-# 2. Commit, tag, push. The tag is what F-Droid watches.
-git commit -am "chore(main): release 0.2.0" && git tag v0.2.0 && git push --follow-tags
-# 3. Build signed artifacts (needs a local keystore.properties).
-./gradlew assembleRelease bundleRelease
-```
-
-Then attach `app/build/outputs/apk/release/app-release.apk` to a GitHub Release
-with its SHA-256, and upload the AAB in the Play Console. Update
-`.release-please-manifest.json` to match, or the next automated release will
-try to reuse the version.
-
-Release builds run R8 (`isMinifyEnabled`, `isShrinkResources`). **Smoke-test a
-release build on a device before promoting it in Play** — shrinking is the one
-build difference that can break playback without failing the build. `./gradlew
-check` proves nothing about sound.
-
-## Out Of Scope
-
-No backend, no server deploy, no environment-specific config, no rollback
-beyond publishing a new version. The app makes no network calls and requests no
-`INTERNET` permission.
-
----
-
-# Setting It Up
-
-Everything below is done once. Until the secrets exist the pipeline degrades
-quietly rather than failing: with no signing key it tags and writes release
-notes but publishes nothing, and with no Play credentials it still ships to
-GitHub Releases and F-Droid.
-
-## 1. Repository settings
-
-- **Settings → General → Pull Requests**: enable *Allow squash merging*, and set
-  the squash commit message to **"Pull request title"**. release-please reads
-  those subjects; `pr-title.yml` enforces their shape.
-- **Settings → Actions → General → Workflow permissions**: allow GitHub Actions
-  to create and approve pull requests.
-- **Settings → Pages**: set the source to the `gh-pages` branch, root. The
-  branch does not exist yet — the first release creates it. Come back after.
-
-## 2. The release signing key
-
-This key is the app's identity. Losing it means never being able to update the
-app again for anyone who installed it from a channel it signed.
-
-```bash
-keytool -genkeypair -v -keystore release.keystore -alias soundboard \
-  -keyalg RSA -keysize 2048 -validity 10000
-base64 -w0 release.keystore   # the value for RELEASE_KEYSTORE_BASE64
-```
-
-Back up `release.keystore` and its passwords somewhere durable and offline —
-a password manager, not this repo. Then add these as secrets:
-
-| Secret | Value |
+| Commit subject | Release effect |
 | --- | --- |
-| `RELEASE_KEYSTORE_BASE64` | the `base64 -w0` output above |
-| `RELEASE_KEYSTORE_PASSWORD` | the password you set |
-| `RELEASE_KEY_ALIAS` | `soundboard` |
-| `RELEASE_KEY_PASSWORD` | **the same password again** |
+| `feat: ...` | Minor version |
+| `fix: ...`, `perf: ...` | Patch version |
+| Breaking-change marker | Depends on Release Please configuration |
+| `docs:`, `chore:`, `ci:`, `refactor:`, `test:` | No release by themselves |
 
-**Where you add them matters.** GitHub has two places: **Settings → Secrets
-and variables → Actions** (repo-level, visible to every job) or **Settings →
-Environments → `<name>` → Environment secrets** (visible only to a job that
-declares `environment: <name>`). This repo's `release.yml` uses the second
-kind — every job that needs a secret declares `environment: Prod` — so add
-these under **Settings → Environments → Prod**, not the repo-level Secrets
-page. A secret added to the wrong one of those two places doesn't error: the
-job just runs with `secrets.WHATEVER` silently empty, which is what "Work out
-what is configured" is there to catch (it prints a `::warning::` and skips
-publishing rather than failing loudly).
+Consult `.release-please-config.json` for the actual versioning policy; older pre-1.0 guidance is not applicable to current 1.x releases.
 
-The last two passwords are the same value. Keystores default to PKCS12 format,
-which has no per-entry passwords — `keytool` warns "Different store and key
-passwords not supported for PKCS12 KeyStores" and discards a separate
-`-keypass`, so the store password is what unlocks the key. The two settings
-survive from the older JKS format, which did support them separately, and
-Gradle still requires both to be supplied.
+## Signing and distribution compatibility
 
-## 3. A token for release-please (recommended)
+Android update compatibility depends on the installed package ID and signing certificate. APKs signed by a different key generally cannot update each other in place. Preserve the release keystore and credentials securely; never upload them to the repository.
 
-A pull request opened with the default `GITHUB_TOKEN` does not trigger CI, so
-the release PR would arrive with no checks on it. Create a fine-grained personal
-access token scoped to this repository with **Contents: read and write** and
-**Pull requests: read and write**, and add it as `RELEASE_PLEASE_TOKEN` under
-**Settings → Environments → Prod** (see the note above — the `release-please`
-job also declares that environment). The workflow falls back to
-`GITHUB_TOKEN` without it.
+- **GitHub Release APK:** signed locally with the project release key in the current procedure.
+- **Google Play:** if adopted, Play App Signing key management and compatibility with locally signed APKs must be established before publication.
+- **f-droid.org:** normally builds and signs with its own key; its distribution is not automatically interchangeable with GitHub APKs. Reproducible-build workflows may offer a route to matching signatures.
 
-## 4. Google Play
+For local signing configuration, see `keystore.properties.example`; for CI secrets, see `docs/secrets.md` if that setup is enabled.
 
-1. Create a **Play Console** account (one-time US$25). Use an *organization*
-   account for 508.dev: personal accounts opened recently must run a closed test
-   with 12 testers for 14 continuous days before they can apply for production
-   access. Verify the current policy — Google changes it.
-2. Create the app: package name `dev.co508.soundboard`, and fill in the store
-   listing from `fastlane/metadata/android/en-US/`.
-3. **Choose Play App Signing with your own key** and upload the keystore from
-   step 2 — see [Signing](#signing). This is permanent.
-4. Upload one AAB by hand. The Play Developer API cannot create an app or
-   publish to a track that has never received a manual upload, so the first
-   release must be manual regardless.
-5. Create a Google Cloud service account, give it a JSON key, and grant it
-   access in **Play Console → Users and permissions** with *Release apps to
-   testing tracks*.
-6. Add the whole JSON file contents as the `PLAY_SERVICE_ACCOUNT_JSON` secret,
-   under **Settings → Environments → Prod** (see the note in step 2 above).
+## Other distribution paths — not part of the verified v1.3.1 procedure
 
-## 5. Baseline the version
+Earlier versions of this document described automated GitHub Actions publication of a signed APK/AAB, Google Play internal-track delivery, and a self-hosted F-Droid repository. **Do not treat those descriptions as operational instructions without checking the current workflow files and credentials.** The v1.3.1 release used the manual local build, device test, and `gh release upload` process above.
 
-release-please finds the last release by tag. Without one it walks back through
-all history and writes a first changelog covering everything. Tag the current
-state once, after the setup commit lands on `main`:
+### Google Play (optional)
 
-```bash
-git tag v0.1.0 && git push origin v0.1.0
-```
+If Google Play distribution is introduced, verify package identity, Play App Signing enrollment, Play Console access, service-account permissions, store metadata, internal-track upload, and manual production promotion. Do not assume an AAB upload is currently automated.
 
-This baseline tag is bare on purpose — release-please has not run yet. Every
-tag it cuts afterwards is component-prefixed (`soundboard-v0.1.2`), so `v0.1.0`
-stays the odd one out forever. Don't infer a `v*` tag pattern from it.
+### F-Droid (optional / separate project)
 
-## 6. F-Droid
+The repository contains F-Droid-related metadata/scripts, including `scripts/fdroid-publish.sh` and `fdroid/` files. Confirm their current paths and repository URLs before using them; historical documentation referenced `508-dev` and `dev.co508.soundboard`, which may not match Soundboard NG's current identity (`de.lattemacchiato.soundboardng`).
 
-The self-hosted repository needs nothing beyond step 1 — the first release
-creates `gh-pages`, and the run log prints the repository URL and fingerprint to
-publish. Submitting to f-droid.org is the separate, later step described in
-[F-Droid](#f-droid) above.
+For an official f-droid.org submission, consult its current submission guide and validate the metadata, package ID, build environment, and signing/reproducibility requirements. Publishing a GitHub Release alone does not establish that f-droid.org has accepted or built the app.
 
-## Still To Do
+### Further automation (backlog)
 
-- Store graphics: a 512×512 PNG icon, a 1024×500 feature graphic, and at least
-  two phone screenshots. Play requires them; F-Droid reads them from
-  `fastlane/metadata/android/en-US/images/` (`icon.png`,
-  `phoneScreenshots/*.png`) if they are committed there.
-- Confirm the licence is GPL-3.0-**only** and not `-or-later`. Both F-Droid
-  metadata files claim `GPL-3.0-only`, chosen as the conservative reading
-  because nothing in the repo says "or later". If that is wrong, fix both files
-  and say so in `README.md`.
+Automating the Release Please PR version-sync commit and reliably triggering its CI checks is a separate improvement. The present, tested workflow intentionally retains the manual `scripts/sync-version.sh` step and subsequent push.
 
-## Agent Notes
+## Troubleshooting and safeguards
 
-- Never hand-edit `versionCode`, `versionName`, or `version.txt`. Change
-  `version.txt` only when deliberately overriding a release, and always re-run
-  `./scripts/sync-version.sh`.
-- Do not turn the version literals in `app/build.gradle.kts` into an expression,
-  and do not move them onto a shared line. F-Droid parses them textually.
-- Do not add publishing to a new store, or promote Play uploads past the
-  internal track, without the maintainer asking. Release signing material and
-  store submissions are deliberate human decisions here.
+- **Release PR checks stay “Expected”:** ensure the version-sync commit was pushed to the release branch; then inspect GitHub Actions and branch protection before merging.
+- **No local tag after release:** `git fetch origin --tags`.
+- **Unsigned APK:** inspect `keystore.properties` and verify with `apksigner` before installing.
+- **Signature mismatch on update:** do not uninstall until app data has been backed up and signing identities compared.
+- **APK upload conflicts:** inspect existing release assets; do not overwrite them without an explicit decision.
+- **Never manually create a release tag during the normal Release Please flow.** Manual release recovery requires its own coordinated procedure to avoid desynchronizing the release manifest.
