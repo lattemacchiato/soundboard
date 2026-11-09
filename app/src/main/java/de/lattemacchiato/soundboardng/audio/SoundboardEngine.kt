@@ -63,6 +63,10 @@ class SoundboardEngine(
     private val fadeScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val fadeJobs = mutableMapOf<String, Job>()
 
+    private val fadeStateTracker = FadeStateTracker()
+
+    val fadeStates: StateFlow<Map<String, FadeStateTracker.State>> =
+        fadeStateTracker.states
     private val segmentFadeJobs = mutableMapOf<String, Job>()
     private val fadeFactors = mutableMapOf<String, Float>()
     private val segmentFadeFactors = mutableMapOf<String, Float>()
@@ -103,6 +107,7 @@ class SoundboardEngine(
     private fun cancelFade(id: String) {
         fadeJobs.remove(id)?.cancel()
         fadingOut.remove(id)
+        fadeStateTracker.clear(id)
     }
 
     private fun cancelSegmentFade(id: String) {
@@ -170,12 +175,15 @@ class SoundboardEngine(
         target: Float,
         durationMs: Int,
         finished: () -> Unit = {},
+        showFeedback: Boolean = false,
     ) {
         if (target == 0f) cancelSegmentFade(id)
         cancelFade(id)
         if (target == 0f) fadingOut.add(id)
+
         val start = fadeFactors[id] ?: 1f
         val duration = durationMs.coerceIn(0, 5000)
+
         if (duration == 0 || start == target) {
             fadingOut.remove(id)
             fadeFactors[id] = target
@@ -183,18 +191,36 @@ class SoundboardEngine(
             finished()
             return
         }
+
+        if (showFeedback) {
+            val state =
+                if (target == 0f) {
+                    FadeStateTracker.State.FADING_OUT
+                } else {
+                    FadeStateTracker.State.FADING_IN
+                }
+
+            fadeStateTracker.start(id, state)
+        }
+
         fadeJobs[id] =
             fadeScope.launch {
                 val startTime = SystemClock.uptimeMillis()
                 while (true) {
-                    val fraction = ((SystemClock.uptimeMillis() - startTime).toFloat() / duration).coerceIn(0f, 1f)
+                    val fraction =
+                        ((SystemClock.uptimeMillis() - startTime).toFloat() / duration)
+                            .coerceIn(0f, 1f)
+
                     fadeFactors[id] = start + (target - start) * fraction
                     updateVolume(id)
+
                     if (fraction >= 1f) break
                     delay(16L)
                 }
+
                 fadeJobs.remove(id)
                 fadingOut.remove(id)
+                fadeStateTracker.clear(id)
                 finished()
             }
     }
@@ -233,6 +259,15 @@ class SoundboardEngine(
             if (players[sound.id] != null) {
                 release(sound.id)
             }
+
+            // Immediate visual feedback while the folder is being loaded.
+            if (sound.fadeInMs > 0) {
+                fadeStateTracker.start(
+                    sound.id,
+                    FadeStateTracker.State.FADING_IN,
+                )
+            }
+
             loadFolder(sound) { player ->
                 gains[sound.id] = sound.gain
                 cancelFade(sound.id)
@@ -254,7 +289,12 @@ class SoundboardEngine(
                 pausedByFocusLoss.remove(sound.id)
                 player.play()
                 setStatus(sound.id, PlaybackStatus.PLAYING)
-                animateFade(sound.id, 1f, sound.fadeInMs)
+                animateFade(
+                    id = sound.id,
+                    target = 1f,
+                    durationMs = sound.fadeInMs,
+                    showFeedback = true,
+                )
             }
             return
         }
@@ -288,7 +328,12 @@ class SoundboardEngine(
         pausedByFocusLoss.remove(sound.id)
         player.play()
         setStatus(sound.id, PlaybackStatus.PLAYING)
-        animateFade(sound.id, 1f, sound.fadeInMs)
+        animateFade(
+            id = sound.id,
+            target = 1f,
+            durationMs = sound.fadeInMs,
+            showFeedback = true,
+        )
         startPlaybackFadeMonitor(sound, player)
     }
 
@@ -329,7 +374,12 @@ class SoundboardEngine(
         }
         player.play()
         setStatus(sound.id, PlaybackStatus.PLAYING)
-        animateFade(sound.id, 1f, sound.fadeInMs)
+        animateFade(
+            id = sound.id,
+            target = 1f,
+            durationMs = sound.fadeInMs,
+            showFeedback = true,
+        )
         startPlaybackFadeMonitor(sound, player)
     }
 
@@ -359,7 +409,13 @@ class SoundboardEngine(
 
     fun pause(sound: Sound) {
         if (_statuses.value[sound.id] != PlaybackStatus.PLAYING) return
-        animateFade(sound.id, 0f, sound.fadeOutMs) { pauseNow(sound.id) }
+        animateFade(
+            id = sound.id,
+            target = 0f,
+            durationMs = sound.fadeOutMs,
+            finished = { pauseNow(sound.id) },
+            showFeedback = true,
+        )
     }
 
     /** Fade out and reset to the beginning; a subsequent tap starts fresh. */
@@ -368,7 +424,13 @@ class SoundboardEngine(
             release(sound.id)
             return
         }
-        animateFade(sound.id, 0f, sound.fadeOutMs) { release(sound.id) }
+        animateFade(
+            id = sound.id,
+            target = 0f,
+            durationMs = sound.fadeOutMs,
+            finished = { release(sound.id) },
+            showFeedback = true,
+        )
     }
 
     fun toggle(sound: Sound) {
@@ -419,6 +481,7 @@ class SoundboardEngine(
         fadeJobs.clear()
         fadeFactors.clear()
         fadingOut.clear()
+        fadeStateTracker.clearAll()
         segmentFadeJobs.values.toList().forEach { it.cancel() }
         segmentFadeJobs.clear()
         segmentFadeFactors.clear()
@@ -502,6 +565,11 @@ class SoundboardEngine(
                         kotlinx.coroutines.currentCoroutineContext()[Job]
                     ) {
                         folderLoadJobs.remove(sound.id)
+
+                        // Clear loading feedback only for this load attempt.
+                        if (_statuses.value[sound.id] != PlaybackStatus.PLAYING) {
+                            fadeStateTracker.clear(sound.id)
+                        }
                     }
                 }
             }

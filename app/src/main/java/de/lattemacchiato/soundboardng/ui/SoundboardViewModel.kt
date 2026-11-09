@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import de.lattemacchiato.soundboardng.audio.FadeStateTracker
 import de.lattemacchiato.soundboardng.audio.PlaybackStatus
 import de.lattemacchiato.soundboardng.audio.SoundboardEngine
 import de.lattemacchiato.soundboardng.data.LockSettings
@@ -26,6 +27,7 @@ import kotlin.time.Duration.Companion.seconds
 data class SoundRowState(
     val sound: Sound,
     val status: PlaybackStatus,
+    val fadeState: FadeStateTracker.State? = null,
 ) {
     val isPlaying: Boolean get() = status == PlaybackStatus.PLAYING
     val isUnavailable: Boolean get() = status == PlaybackStatus.UNAVAILABLE
@@ -52,8 +54,14 @@ class SoundboardViewModel(
     fun setLocked(value: Boolean) = lockSettings.setLocked(value)
 
     val rows: StateFlow<List<SoundRowState>> =
-        combine(repository.sounds, engine.statuses) { sounds, statuses ->
-            sounds.map { SoundRowState(it, statuses[it.id] ?: PlaybackStatus.IDLE) }
+        combine(repository.sounds, engine.statuses, engine.fadeStates) { sounds, statuses, fadeStates ->
+            sounds.map { sound ->
+                SoundRowState(
+                    sound = sound,
+                    status = statuses[sound.id] ?: PlaybackStatus.IDLE,
+                    fadeState = fadeStates[sound.id],
+                )
+            }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
 
     /** True while anything is audible; the screen uses it to offer "Stop all". */
