@@ -4,7 +4,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class SoundLibraryBoardTest {
-    @Test fun sameUriAllowedAcrossBoardsButNotWithinOne() {
+    @Test
+    fun sameUriAllowedWithinAndAcrossBoards() {
         val library =
             SoundLibrary()
                 .withSound("a", "content://rain", "Rain")
@@ -12,8 +13,10 @@ class SoundLibraryBoardTest {
                 .selectedBoard("second")
                 .withSound("b", "content://rain", "Rain")
                 .withSound("c", "content://rain", "Duplicate")
-        assertEquals(1, library.sounds.size)
-        assertEquals(2, library.boards.sumOf { it.sounds.size })
+
+        assertEquals(2, library.sounds.size)
+        assertEquals(3, library.boards.sumOf { it.sounds.size })
+        assertEquals(listOf("b", "c"), library.sounds.map { it.id })
         assertEquals(setOf("content://rain"), library.allSoundUris())
     }
 

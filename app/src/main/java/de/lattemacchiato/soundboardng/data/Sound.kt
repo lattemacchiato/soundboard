@@ -5,9 +5,14 @@ import kotlinx.serialization.Serializable
 /**
  * One sound in the board.
  *
- * [uri] is the SAF document URI the user picked, held as a string. The file is
- * never copied into app storage — see `DECISIONS.md` → "Reference Picked Files
- * By URI, Never Copy".
+ * [uri] identifies the audio file or folder referenced by this sound.
+ * Files selected through the Storage Access Framework are referenced by their
+ * document URI without copying them into app storage.
+ * Audio restored from a ZIP backup is stored in the app's private storage
+ * and referenced by a file URI.
+ *
+ * Multiple sounds may reference the same URI while retaining independent
+ * IDs and playback settings.
  *
  * [volumePercent] is a 0..100 gain applied *relative to* whatever the Android
  * media stream volume currently is, so the two compose naturally: the system

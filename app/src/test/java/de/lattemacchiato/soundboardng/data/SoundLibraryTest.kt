@@ -16,14 +16,63 @@ class SoundLibraryTest {
     }
 
     @Test
-    fun `withSound ignores a uri already on the board`() {
+    fun `withSound allows the same uri with different ids`() {
         val library =
             SoundLibrary()
                 .withSound("a", "content://rain", "Rain")
                 .withSound("b", "content://rain", "Rain (copy)")
 
+        assertEquals(2, library.sounds.size)
+        assertEquals(listOf("a", "b"), library.sounds.map { it.id })
+        assertEquals(listOf("Rain", "Rain (copy)"), library.sounds.map { it.name })
+        assertEquals(
+            listOf("content://rain", "content://rain"),
+            library.sounds.map { it.uri },
+        )
+    }
+
+    @Test
+    fun `withSound ignores an id already on the board`() {
+        val library =
+            SoundLibrary()
+                .withSound("a", "content://rain", "Rain")
+                .withSound("a", "content://fan", "Fan")
+
         assertEquals(1, library.sounds.size)
-        assertEquals("a", library.sounds.single().id)
+        assertEquals("Rain", library.sounds.single().name)
+        assertEquals("content://rain", library.sounds.single().uri)
+    }
+
+    @Test
+    fun `sounds sharing a uri have independent volume settings`() {
+        val library =
+            SoundLibrary()
+                .withSound("a", "content://rain", "Rain")
+                .withSound("b", "content://rain", "Rain (copy)")
+                .withVolume("a", 40)
+
+        assertEquals(2, library.sounds.size)
+        assertEquals(40, library.find("a")?.volumePercent)
+        assertEquals(100, library.find("b")?.volumePercent)
+        assertEquals(
+            library.find("a")?.uri,
+            library.find("b")?.uri,
+        )
+    }
+
+    @Test
+    fun `removing one sound preserves another with the same uri`() {
+        val library =
+            SoundLibrary()
+                .withSound("a", "content://rain", "Rain")
+                .withSound("b", "content://rain", "Rain (copy)")
+                .withoutSound("a")
+
+        assertEquals(1, library.sounds.size)
+        assertNull(library.find("a"))
+        assertEquals("b", library.sounds.single().id)
+        assertEquals("content://rain", library.sounds.single().uri)
+        assertEquals(setOf("content://rain"), library.allSoundUris())
     }
 
     @Test

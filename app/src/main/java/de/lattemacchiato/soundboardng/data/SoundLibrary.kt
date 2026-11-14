@@ -59,10 +59,10 @@ data class SoundLibrary(
     }
 
     /**
-     * Appends a sound, ignoring the request when [uri] is already on the board.
+     * Appends a sound to the active board unless its ID already exists.
      *
-     * De-duplicating by URI means re-picking a file the user already added is a
-     * no-op rather than a confusing double row.
+     * Multiple sounds may reference the same URI, allowing independent tiles
+     * with their own playback settings for the same audio file.
      */
     fun withSound(
         id: String,
@@ -70,7 +70,7 @@ data class SoundLibrary(
         name: String,
         type: SoundType = SoundType.FILE,
     ): SoundLibrary =
-        if (sounds.any { it.uri == uri }) {
+        if (sounds.any { it.id == id }) {
             this
         } else {
             withActiveSounds(
