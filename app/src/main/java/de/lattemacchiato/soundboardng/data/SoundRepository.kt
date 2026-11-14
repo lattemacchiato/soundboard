@@ -205,10 +205,12 @@ class SoundRepository(
     }
 
     /**
-     * Drops a sound from the board and releases its URI permission.
+     * Removes a sound from the active board.
      *
-     * The file itself is never deleted — that promise is in the confirmation
-     * dialog the UI shows before calling this.
+     * Releases the persisted URI permission only when no remaining sound
+     * on any board references the same URI.
+     *
+     * The underlying audio file is never deleted.
      */
     suspend fun remove(id: String) {
         val releasedUris = mutableSetOf<String>()
