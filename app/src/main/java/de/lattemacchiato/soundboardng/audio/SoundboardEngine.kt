@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Mixes any number of looping sounds, each with its own gain.
@@ -157,7 +158,7 @@ class SoundboardEngine(
                         updateVolume(sound.id)
                     }
 
-                    delay(16L)
+                    delay(16.milliseconds)
                 }
             }
     }
@@ -215,7 +216,7 @@ class SoundboardEngine(
                     updateVolume(id)
 
                     if (fraction >= 1f) break
-                    delay(16L)
+                    delay(16.milliseconds)
                 }
 
                 fadeJobs.remove(id)
@@ -405,8 +406,6 @@ class SoundboardEngine(
         abandonFocusIfSilent()
     }
 
-    fun pause(id: String) = pauseNow(id)
-
     fun pause(sound: Sound) {
         if (_statuses.value[sound.id] != PlaybackStatus.PLAYING) return
         animateFade(
@@ -468,11 +467,21 @@ class SoundboardEngine(
         soundTypes.remove(id)
         gains.remove(id)
         pausedByFocusLoss.remove(id)
-        _statuses.value = _statuses.value - id
+        _statuses.value -= id
         abandonFocusIfSilent()
     }
 
-    /** Releases everything. The engine is unusable afterwards. */
+    /**
+     * Permanently shuts down the engine and releases all resources.
+     *
+     * Currently unused by design: SoundboardEngine is owned by the Application
+     * and must survive Activity recreation and navigation.
+     *
+     * Normal cleanup releases individual players via release(id).
+     * Keep this method for a potential explicit application shutdown or
+     * future lifecycle changes. Do not call it during Activity disposal.
+     */
+    @Suppress("unused")
     fun releaseAll() {
         folderLoadJobs.values.toList().forEach { it.cancel() }
         folderLoadJobs.clear()
@@ -690,7 +699,7 @@ class SoundboardEngine(
         id: String,
         status: PlaybackStatus,
     ) {
-        _statuses.value = _statuses.value + (id to status)
+        _statuses.value += id to status
     }
 
     private fun abandonFocusIfSilent() {
