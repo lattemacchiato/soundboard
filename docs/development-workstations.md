@@ -9,14 +9,14 @@ For branching, CI, releases, and device testing, see
 
 ## 1. Workstations
 
-| Property | Ubuntu | Windows |
-|---|---|---|
-| OS | Ubuntu 24.04 | Windows 11 |
-| Project | `~/AndroidStudioProjects/soundboard` | `C:\dev\soundboard` |
-| IDE | Android Studio | Android Studio |
-| JDK | Android Studio JBR, Java 25 | Android Studio JBR, Java 25 |
-| Gradle | `./gradlew` | `.\gradlew.bat` |
-| Git remote | `origin` | `origin` |
+| Property   | Ubuntu                               | Windows                     |
+|------------|--------------------------------------|-----------------------------|
+| OS         | Ubuntu 24.04                         | Windows 11                  |
+| Project    | `~/AndroidStudioProjects/soundboard` | `C:\dev\soundboard`         |
+| IDE        | Android Studio                       | Android Studio              |
+| JDK        | Android Studio JBR, Java 25          | Android Studio JBR, Java 25 |
+| Gradle     | `./gradlew`                          | `.\gradlew.bat`             |
+| Git remote | `origin`                             | `origin`                    |
 
 Repository: https://github.com/lattemacchiato/soundboard
 
