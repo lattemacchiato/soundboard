@@ -8,12 +8,42 @@ class NotificationPermissionPolicyTest {
     fun `explanation is only shown when required`() {
         val cases =
             listOf(
-                TestCase(27, false, false, false),
-                TestCase(32, false, false, false),
-                TestCase(33, false, false, true),
-                TestCase(36, true, false, false),
-                TestCase(36, false, true, false),
-                TestCase(36, true, true, false),
+                TestCase(
+                    apiLevel = 27,
+                    permissionGranted = false,
+                    explanationShown = false,
+                    expected = false,
+                ),
+                TestCase(
+                    apiLevel = 32,
+                    permissionGranted = false,
+                    explanationShown = false,
+                    expected = false,
+                ),
+                TestCase(
+                    apiLevel = 33,
+                    permissionGranted = false,
+                    explanationShown = false,
+                    expected = true,
+                ),
+                TestCase(
+                    apiLevel = 36,
+                    permissionGranted = true,
+                    explanationShown = false,
+                    expected = false,
+                ),
+                TestCase(
+                    apiLevel = 36,
+                    permissionGranted = false,
+                    explanationShown = true,
+                    expected = false,
+                ),
+                TestCase(
+                    apiLevel = 36,
+                    permissionGranted = true,
+                    explanationShown = true,
+                    expected = false,
+                ),
             )
 
         cases.forEach { case ->

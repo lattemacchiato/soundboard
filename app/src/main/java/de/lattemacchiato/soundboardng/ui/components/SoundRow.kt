@@ -5,7 +5,6 @@ import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -61,7 +60,7 @@ import de.lattemacchiato.soundboardng.ui.SoundRowState
  * but the whole card is a far easier target on a phone. Long-pressing opens the
  * options sheet.
  */
-@OptIn(ExperimentalFoundationApi::class)
+
 @Composable
 fun SoundRow(
     row: SoundRowState,

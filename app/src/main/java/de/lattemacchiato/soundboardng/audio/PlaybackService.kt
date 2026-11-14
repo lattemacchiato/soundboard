@@ -99,7 +99,7 @@ class PlaybackService : Service() {
     }
 
     private val notificationManager: NotificationManager
-        get() = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        get() = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
     private fun createChannel() {
         val channel =
