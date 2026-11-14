@@ -81,6 +81,33 @@ class BackupFolderManifestTest {
     }
 
     @Test
+    fun invalidOriginalFilenamesAreRejected() {
+        val invalidNames =
+            listOf(
+                "",
+                " ",
+                ".",
+                "..",
+                "folder/audio.mp3",
+                "folder\\audio.mp3",
+                "audio\u0000.mp3",
+            )
+
+        invalidNames.forEach { name ->
+            assertThrows("Filename: $name", IllegalArgumentException::class.java) {
+                BackupFolderValidator.validate(
+                    manifest(
+                        listOf(
+                            BackupFolderFile(audioPath, name),
+                        ),
+                    ),
+                    setOf(audioPath),
+                )
+            }
+        }
+    }
+
+    @Test
     fun audioFileOutsideFolderIsRejected() {
         assertThrows(IllegalArgumentException::class.java) {
             BackupFolderValidator.validate(

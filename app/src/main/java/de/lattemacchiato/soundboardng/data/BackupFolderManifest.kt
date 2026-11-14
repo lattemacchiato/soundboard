@@ -34,31 +34,31 @@ internal object BackupFolderValidator {
 
         val filePaths = mutableSetOf<String>()
 
-        for (folder in manifest.folders) {
-            require(folderPattern.matches(folder.folderPath)) {
+        for ((folderPath, files) in manifest.folders) {
+            require(folderPattern.matches(folderPath)) {
                 "Invalid backup folder path"
             }
 
-            for (file in folder.files) {
-                require(filePattern.matches(file.path)) {
+            for ((path, name) in files) {
+                require(filePattern.matches(path)) {
                     "Invalid backup audio path"
                 }
-                require(file.path.startsWith("${folder.folderPath}/")) {
+                require(path.startsWith("$folderPath/")) {
                     "Audio file outside backup folder"
                 }
-                require(filePaths.add(file.path)) {
+                require(filePaths.add(path)) {
                     "Duplicate backup audio file"
                 }
-                require(file.path in zipEntries) {
+                require(path in zipEntries) {
                     "Missing backup audio file"
                 }
                 require(
-                    file.name.isNotBlank() &&
-                        file.name != "." &&
-                        file.name != ".." &&
-                        '/' !in file.name &&
-                        '\\' !in file.name &&
-                        '\u0000' !in file.name,
+                    name.isNotBlank() &&
+                        name != "." &&
+                        name != ".." &&
+                        '/' !in name &&
+                        '\\' !in name &&
+                        '\u0000' !in name,
                 ) {
                     "Invalid original audio filename"
                 }

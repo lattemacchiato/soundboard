@@ -75,18 +75,23 @@ class SoundboardViewModel(
 
         val current = currentSound(sound)
 
-        if (current.tapBehavior == TapBehavior.STOP_RESTART &&
-            engine.statuses.value[current.id] == PlaybackStatus.PLAYING &&
-            !engine.isFadingOut(current.id)
-        ) {
-            engine.stop(current)
-        } else if (
-            current.tapBehavior == TapBehavior.STOP_RESTART &&
-            engine.isFadingOut(current.id)
-        ) {
-            engine.restart(current)
-        } else {
-            engine.toggle(current)
+        when (current.tapBehavior) {
+            TapBehavior.STOP_RESTART -> {
+                if (
+                    engine.statuses.value[current.id] == PlaybackStatus.PLAYING &&
+                    !engine.isFadingOut(current.id)
+                ) {
+                    engine.stop(current)
+                } else if (engine.isFadingOut(current.id)) {
+                    engine.restart(current)
+                } else {
+                    engine.toggle(current)
+                }
+            }
+
+            else -> {
+                engine.toggle(current)
+            }
         }
     }
 
@@ -227,12 +232,13 @@ class SoundboardViewModel(
     }
 
     /**
-     * Persists a new sound order.
+     * Persists the new sound order.
      *
-     * Called once a drag ends (with the whole board's ids in their new order) and
-     * by rearrange mode's sort shortcuts — both are one-shot writes, not a
-     * continuously maintained sort, so a later manual drag is free to move things
-     * again.
+     * Called after a drag operation or a sort action in rearrange mode.
+     * Each call writes the complete list of sound IDs in their new order.
+     *
+     * The order is not maintained automatically.
+     * Subsequent drag operations can freely rearrange the sounds again.
      */
     fun commitOrder(order: List<String>) {
         if (locked.value) return

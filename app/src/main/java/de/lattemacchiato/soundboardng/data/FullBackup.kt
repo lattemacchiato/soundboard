@@ -3,6 +3,7 @@ package de.lattemacchiato.soundboardng.data
 import android.content.Context
 import android.net.Uri
 import android.webkit.MimeTypeMap
+import androidx.core.net.toUri
 import de.lattemacchiato.soundboardng.audio.FolderAudioResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -94,7 +95,7 @@ class FullBackup(
                 val key = sound.type to sound.uri
                 if (key in paths) continue
 
-                val sourceUri = Uri.parse(sound.uri)
+                val sourceUri = sound.uri.toUri()
 
                 when (sound.type) {
                     SoundType.FILE -> {
@@ -182,12 +183,12 @@ class FullBackup(
 
                     var total = 0L
 
-                    for (audio in audioSources) {
-                        zip.putNextEntry(ZipEntry(audio.path))
+                    for ((source, path) in audioSources) {
+                        zip.putNextEntry(ZipEntry(path))
 
                         val input =
-                            resolver.openInputStream(audio.source)
-                                ?: error("Cannot read audio: ${audio.source}")
+                            resolver.openInputStream(source)
+                                ?: error("Cannot read audio: $source")
 
                         input.use { stream ->
                             val buffer = ByteArray(64 * 1024)
@@ -289,8 +290,8 @@ class FullBackup(
         stage: File,
         manifest: BackupFolderManifest,
     ) {
-        for (folder in manifest.folders) {
-            val directory = File(stage, folder.folderPath)
+        for ((folderPath, files) in manifest.folders) {
+            val directory = File(stage, folderPath)
             require(directory.isDirectory || directory.mkdirs()) {
                 "Cannot create restored folder"
             }
@@ -298,13 +299,12 @@ class FullBackup(
             val usedNames = mutableSetOf<String>()
             val renames = mutableListOf<Pair<File, File>>()
 
-            for (file in folder.files) {
-                val source = File(stage, file.path)
+            for ((path, original) in files) {
+                val source = File(stage, path)
                 require(source.isFile) {
-                    "Missing extracted folder audio: ${file.path}"
+                    "Missing extracted folder audio: $path"
                 }
 
-                val original = file.name
                 val dot = original.lastIndexOf('.')
                 val base = if (dot > 0) original.substring(0, dot) else original
                 val extension = if (dot > 0) original.substring(dot) else ""
@@ -416,22 +416,26 @@ class FullBackup(
                             null
                         }
                     val configBuffer = if (isConfig) java.io.ByteArrayOutputStream() else null
-                    try {
+                    output.use { stream ->
                         val buffer = ByteArray(64 * 1024)
+
                         while (true) {
                             val n = zip.read(buffer)
                             if (n < 0) break
+
                             if (isConfig) {
-                                require(configBuffer!!.size() + n <= MAX_CONFIG_BYTES) { "Configuration too large" }
+                                require(configBuffer!!.size() + n <= MAX_CONFIG_BYTES) {
+                                    "Configuration too large"
+                                }
                                 configBuffer.write(buffer, 0, n)
                             } else {
                                 bytes += n
-                                require(bytes <= MAX_AUDIO_BYTES) { "Audio data too large" }
-                                output?.write(buffer, 0, n)
+                                require(bytes <= MAX_AUDIO_BYTES) {
+                                    "Audio data too large"
+                                }
+                                stream?.write(buffer, 0, n)
                             }
                         }
-                    } finally {
-                        output?.close()
                     }
                     if (isConfig) config = configBuffer!!.toByteArray()
                     zip.closeEntry()
