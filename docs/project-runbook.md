@@ -9,17 +9,17 @@
 
 ## 1. Projekt und Entwicklungsumgebung
 
-| Eigenschaft | Wert |
-|---|---|
-| Lokales Projekt | `~/AndroidStudioProjects/soundboard` |
-| System | Ubuntu 24.04, Android Studio |
-| Technologie | Kotlin, Jetpack Compose, Gradle |
-| Referenzgerät | Samsung Galaxy Tab A (2016), Android 8.1 / API 27 |
-| Weiteres Testgerät | Samsung Galaxy S24 |
-| Release Application ID | `de.lattemacchiato.soundboardng` |
-| Debug Application ID | `de.lattemacchiato.soundboardng.debug` |
-| Stabiles Release | `v1.2.0` |
-| Installierter Debug-Stand | `1.2.0-dev` |
+| Eigenschaft               | Wert                                              |
+|---------------------------|---------------------------------------------------|
+| Lokales Projekt           | `~/AndroidStudioProjects/soundboard`              |
+| System                    | Ubuntu 24.04, Android Studio                      |
+| Technologie               | Kotlin, Jetpack Compose, Gradle                   |
+| Referenzgerät             | Samsung Galaxy Tab A (2016), Android 8.1 / API 27 |
+| Weiteres Testgerät        | Samsung Galaxy S24                                |
+| Release Application ID    | `de.lattemacchiato.soundboardng`                  |
+| Debug Application ID      | `de.lattemacchiato.soundboardng.debug`            |
+| Stabiles Release          | `v1.2.0`                                          |
+| Installierter Debug-Stand | `1.2.0-dev`                                       |
 
 Die App ist kostenlos, werbefrei, trackingfrei, Open Source und vollständig offline nutzbar. Die ursprüngliche Application ID `dev.co508.soundboard` wurde ersetzt. Release und Debug sind eigenständige Installationen mit separaten Daten und können parallel betrieben werden.
 
@@ -271,17 +271,17 @@ Für Erweiterungen die aktuelle Implementierung in Datenmodell, Audio-Engine und
 
 ## 8. Backlog
 
-| Thema | Stand |
-|---|---|
-| Play Folder | Mit v1.2.0 veröffentlicht |
-| Performance Lock Mode | Mit v1.2.0 veröffentlicht |
-| Automatische Synchronisierung der Release-PR-Versionsdateien | Zurückgestellt |
-| CI-Trigger nach automatischem Bot-Commit | Teil der zurückgestellten Release-Automatisierung |
-| Signierte APK automatisch an GitHub-Release anhängen | Zurückgestellt; manueller Upload Pflicht |
-| Kotlin-Deprecation `Modifier.menuAnchor()` | Technische Wartung, offen |
-| F-Droid-Veröffentlichung | Weiterhin Projektziel |
-| Erneute Upstream-Contribution / Merge-Angebot an `508-dev` | Später erneut prüfen |
-| Weitere Features | Nach jeder Implementierung gemeinsam priorisieren |
+| Thema                                                        | Stand                                             |
+|--------------------------------------------------------------|---------------------------------------------------|
+| Play Folder                                                  | Mit v1.2.0 veröffentlicht                         |
+| Performance Lock Mode                                        | Mit v1.2.0 veröffentlicht                         |
+| Automatische Synchronisierung der Release-PR-Versionsdateien | Zurückgestellt                                    |
+| CI-Trigger nach automatischem Bot-Commit                     | Teil der zurückgestellten Release-Automatisierung |
+| Signierte APK automatisch an GitHub-Release anhängen         | Zurückgestellt; manueller Upload Pflicht          |
+| Kotlin-Deprecation `Modifier.menuAnchor()`                   | Technische Wartung, offen                         |
+| F-Droid-Veröffentlichung                                     | Weiterhin Projektziel                             |
+| Erneute Upstream-Contribution / Merge-Angebot an `508-dev`   | Später erneut prüfen                              |
+| Weitere Features                                             | Nach jeder Implementierung gemeinsam priorisieren |
 
 Für eine spätere Vollautomatisierung wurden Fine-Grained PAT oder GitHub-App-Token diskutiert. Noch nicht umgesetzt.
 

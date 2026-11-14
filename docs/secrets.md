@@ -8,14 +8,14 @@ obtained.
 
 ## GitHub Actions Secrets
 
-| Secret | Used for | Without it |
-| --- | --- | --- |
-| `RELEASE_KEYSTORE_BASE64` | the app signing key, `base64 -w0` of the keystore | nothing is published; the release is still tagged |
-| `RELEASE_KEYSTORE_PASSWORD` | keystore password | as above |
-| `RELEASE_KEY_ALIAS` | key alias within the keystore | as above |
-| `RELEASE_KEY_PASSWORD` | same value as `RELEASE_KEYSTORE_PASSWORD` — PKCS12 keystores have no separate key password | as above |
-| `PLAY_SERVICE_ACCOUNT_JSON` | Play Developer API service account, whole JSON file | Play is skipped; GitHub Releases and F-Droid still publish |
-| `RELEASE_PLEASE_TOKEN` | fine-grained PAT so the release PR triggers CI | falls back to `GITHUB_TOKEN`; the release PR arrives unchecked |
+| Secret                      | Used for                                                                                   | Without it                                                     |
+|-----------------------------|--------------------------------------------------------------------------------------------|----------------------------------------------------------------|
+| `RELEASE_KEYSTORE_BASE64`   | the app signing key, `base64 -w0` of the keystore                                          | nothing is published; the release is still tagged              |
+| `RELEASE_KEYSTORE_PASSWORD` | keystore password                                                                          | as above                                                       |
+| `RELEASE_KEY_ALIAS`         | key alias within the keystore                                                              | as above                                                       |
+| `RELEASE_KEY_PASSWORD`      | same value as `RELEASE_KEYSTORE_PASSWORD` — PKCS12 keystores have no separate key password | as above                                                       |
+| `PLAY_SERVICE_ACCOUNT_JSON` | Play Developer API service account, whole JSON file                                        | Play is skipped; GitHub Releases and F-Droid still publish     |
+| `RELEASE_PLEASE_TOKEN`      | fine-grained PAT so the release PR triggers CI                                             | falls back to `GITHUB_TOKEN`; the release PR arrives unchecked |
 
 The signing key is reused to sign the self-hosted F-Droid repository index. One
 key means one set of secrets to protect and rotate, at the cost of coupling two

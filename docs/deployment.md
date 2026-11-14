@@ -188,12 +188,12 @@ version.txt
 
 `versionCode = major * 1000000 + minor * 1000 + patch`. Keep `versionName` and `versionCode` as literal values in Gradle if downstream F-Droid tooling parses them. `scripts/sync-version.sh --check` can detect drift in CI.
 
-| Commit subject | Release effect |
-| --- | --- |
-| `feat: ...` | Minor version |
-| `fix: ...`, `perf: ...` | Patch version |
-| Breaking-change marker | Depends on Release Please configuration |
-| `docs:`, `chore:`, `ci:`, `refactor:`, `test:` | No release by themselves |
+| Commit subject                                 | Release effect                          |
+|------------------------------------------------|-----------------------------------------|
+| `feat: ...`                                    | Minor version                           |
+| `fix: ...`, `perf: ...`                        | Patch version                           |
+| Breaking-change marker                         | Depends on Release Please configuration |
+| `docs:`, `chore:`, `ci:`, `refactor:`, `test:` | No release by themselves                |
 
 Consult `.release-please-config.json` for the actual versioning policy; older pre-1.0 guidance is not applicable to current 1.x releases.
 
