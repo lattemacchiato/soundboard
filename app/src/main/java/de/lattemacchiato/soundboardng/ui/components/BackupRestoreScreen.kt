@@ -1,9 +1,11 @@
 package de.lattemacchiato.soundboardng.ui.components
 
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -20,6 +22,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -31,6 +34,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -54,6 +58,50 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
     var preview by remember { mutableStateOf<BackupPreview?>(null) }
     var fullPreview by remember { mutableStateOf<FullBackupPreview?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
+    var useExternalStorage by remember { mutableStateOf(false) }
+    var pendingExternalRestore by remember { mutableStateOf<FullBackupPreview?>(null) }
+    val selectImportFolder =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            val candidate = pendingExternalRestore
+            pendingExternalRestore = null
+
+            if (uri != null && candidate != null && !locked) {
+                try {
+                    require(
+                        uri.scheme == "content" &&
+                            uri.authority == "com.android.externalstorage.documents",
+                    ) {
+                        "Only local device storage or SD cards are supported for audio import"
+                    }
+                    app.contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                            Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                    )
+                    scope.launch {
+                        busy = true
+                        try {
+                            app.engine.pauseAll()
+                            app.repository.sounds
+                                .first()
+                                .forEach { app.engine.release(it.id) }
+                            fullBackup.restore(
+                                preview = candidate,
+                                externalFolderUri = uri,
+                            )
+                            fullPreview = null
+                            message = "Full backup restored successfully."
+                        } catch (e: Exception) {
+                            message = "Full backup restore failed: ${e.message}"
+                        } finally {
+                            busy = false
+                        }
+                    }
+                } catch (e: Exception) {
+                    message = "Cannot access selected folder: ${e.message}"
+                }
+            }
+        }
 
     val export =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
@@ -222,7 +270,7 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                             busy = false
                         }
                     }
-                }) { Text("Replace") }
+                }) { Text("Restore") }
             },
             dismissButton = { TextButton(enabled = !busy, onClick = { preview = null }) { Text("Cancel") } },
         )
@@ -238,30 +286,70 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                             "${candidate.audioCount} audio file(s).",
                     )
                     Text(
-                        "All current boards and settings will be replaced. Audio will be copied into private app storage.",
+                        "All current boards and settings will be replaced.",
+                    )
+                    Text(
+                        if (useExternalStorage) {
+                            "Audio will be imported into a folder you select. Existing files will not be overwritten."
+                        } else {
+                            "Audio will be copied into private app storage."
+                        },
                     )
                     Text("A recovery copy of the previous configuration will be saved.")
+
+                    Text(
+                        "Audio storage location:",
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(
+                            selected = !useExternalStorage,
+                            onClick = { useExternalStorage = false },
+                            enabled = !busy,
+                        )
+                        Text("Internal app storage (default)")
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(
+                            selected = useExternalStorage,
+                            onClick = { useExternalStorage = true },
+                            enabled = !busy,
+                        )
+                        Text("Selected folder (external storage)")
+                    }
                 }
             },
             confirmButton = {
                 TextButton(enabled = !locked && !busy, onClick = {
-                    scope.launch {
-                        busy = true
-                        try {
-                            app.engine.pauseAll()
-                            app.repository.sounds
-                                .first()
-                                .forEach { app.engine.release(it.id) }
-                            fullBackup.restore(candidate)
-                            fullPreview = null
-                            message = "Full backup restored successfully."
-                        } catch (e: Exception) {
-                            message = "ZIP restore failed: ${e.message}"
-                        } finally {
-                            busy = false
+                    if (useExternalStorage) {
+                        pendingExternalRestore = candidate
+                        fullPreview = null
+                        selectImportFolder.launch(null)
+                    } else {
+                        scope.launch {
+                            busy = true
+                            try {
+                                app.engine.pauseAll()
+                                app.repository.sounds
+                                    .first()
+                                    .forEach { app.engine.release(it.id) }
+                                fullBackup.restore(candidate)
+                                fullPreview = null
+                                message = "Full backup restored successfully."
+                            } catch (e: Exception) {
+                                message = "ZIP restore failed: ${e.message}"
+                            } finally {
+                                busy = false
+                            }
                         }
                     }
-                }) { Text("Replace") }
+                }) { Text("Restore") }
             },
             dismissButton = {
                 TextButton(enabled = !busy, onClick = { fullPreview = null }) { Text("Cancel") }
