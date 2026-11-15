@@ -59,7 +59,15 @@ class FolderAudioResolver(
     }
 
     private fun resolveSaf(treeUri: Uri): List<AudioFile> {
-        val parentId = DocumentsContract.getTreeDocumentId(treeUri)
+        val parentId =
+            if (treeUri.pathSegments.size >= 4 &&
+                treeUri.pathSegments[2] == "document"
+            ) {
+                DocumentsContract.getDocumentId(treeUri)
+            } else {
+                DocumentsContract.getTreeDocumentId(treeUri)
+            }
+
         val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, parentId)
 
         val files = mutableListOf<AudioFile>()
@@ -92,11 +100,31 @@ class FolderAudioResolver(
                         )
 
                     while (cursor.moveToNext()) {
-                        val mimeType = cursor.getString(mimeColumn) ?: continue
-                        if (!mimeType.startsWith("audio/", ignoreCase = true)) continue
+                        val mimeType = cursor.getString(mimeColumn)
+                        val name = cursor.getString(nameColumn) ?: continue
+                        val extension = name.substringAfterLast('.', "").lowercase()
+
+                        if (mimeType == DocumentsContract.Document.MIME_TYPE_DIR) continue
+
+                        val isAudio =
+                            mimeType?.startsWith("audio/", ignoreCase = true) == true ||
+                                extension in
+                                setOf(
+                                    "mp3",
+                                    "wav",
+                                    "ogg",
+                                    "flac",
+                                    "m4a",
+                                    "aac",
+                                    "opus",
+                                    "aiff",
+                                    "aif",
+                                    "amr",
+                                )
+
+                        if (!isAudio) continue
 
                         val documentId = cursor.getString(idColumn) ?: continue
-                        val name = cursor.getString(nameColumn) ?: continue
 
                         files +=
                             AudioFile(

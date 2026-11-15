@@ -91,6 +91,9 @@ class BackupFolderManifestTest {
                 "folder/audio.mp3",
                 "folder\\audio.mp3",
                 "audio\u0000.mp3",
+                "audio\tfile.mp3",
+                "audio\nfile.mp3",
+                "audio\u001F.mp3",
             )
 
         invalidNames.forEach { name ->
@@ -146,6 +149,99 @@ class BackupFolderManifestTest {
         BackupFolderValidator.validate(
             manifest(files),
             files.map { it.path }.toSet(),
+        )
+    }
+
+    @Test
+    fun validVersion3AudioManifest() {
+        val path = "audio/00000.mp3"
+        val manifest =
+            BackupFolderManifest(
+                audioFiles = listOf(BackupFolderFile(path, "Originalaufnahme.mp3")),
+            )
+
+        BackupFolderValidator.validate(
+            manifest = manifest,
+            zipEntries = setOf(path),
+            version = 3,
+        )
+
+        assertEquals("Originalaufnahme.mp3", manifest.audioFiles.single().name)
+    }
+
+    @Test
+    fun version3RejectsMissingAudioManifestEntry() {
+        val path = "audio/00000.mp3"
+
+        assertThrows(IllegalArgumentException::class.java) {
+            BackupFolderValidator.validate(
+                manifest = BackupFolderManifest(),
+                zipEntries = setOf(path),
+                version = 3,
+            )
+        }
+    }
+
+    @Test
+    fun version3RejectsDuplicateAudioPaths() {
+        val path = "audio/00000.mp3"
+        val file = BackupFolderFile(path, "Original.mp3")
+
+        assertThrows(IllegalArgumentException::class.java) {
+            BackupFolderValidator.validate(
+                manifest =
+                    BackupFolderManifest(
+                        audioFiles = listOf(file, file),
+                    ),
+                zipEntries = setOf(path),
+                version = 3,
+            )
+        }
+    }
+
+    @Test
+    fun version3RejectsInvalidOriginalFilenames() {
+        val path = "audio/00000.mp3"
+        val invalidNames =
+            listOf(
+                "",
+                " ",
+                ".",
+                "..",
+                "../outside.mp3",
+                "folder/audio.mp3",
+                "folder\\audio.mp3",
+                "audio\u0000.mp3",
+                "audio\tfile.mp3",
+                "audio\nfile.mp3",
+                "audio\u001F.mp3",
+            )
+
+        invalidNames.forEach { name ->
+            assertThrows("Filename: $name", IllegalArgumentException::class.java) {
+                BackupFolderValidator.validate(
+                    manifest =
+                        BackupFolderManifest(
+                            audioFiles =
+                                listOf(
+                                    BackupFolderFile(path, name),
+                                ),
+                        ),
+                    zipEntries = setOf(path),
+                    version = 3,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun version2AllowsManifestWithoutAudioFilenames() {
+        val path = "audio/00000.mp3"
+
+        BackupFolderValidator.validate(
+            manifest = BackupFolderManifest(),
+            zipEntries = setOf(path),
+            version = 2,
         )
     }
 }
