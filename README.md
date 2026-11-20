@@ -24,24 +24,24 @@ and a simplified interface for use during live performances.
 
 ### Soundboard
 
-| Edit mode | Performance lock mode |
-|:---:|:---:|
+|                                                                 Edit mode                                                                  |                                                                   Performance lock mode                                                                    |
+|:------------------------------------------------------------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------------------------------------------------------------------------:|
 | <a href="docs/screenshots/soundboard-edit.jpg"><img src="docs/screenshots/soundboard-edit.jpg" width="320" alt="Soundboard edit mode"></a> | <a href="docs/screenshots/soundboard-locked.jpg"><img src="docs/screenshots/soundboard-locked.jpg" width="320" alt="Soundboard performance lock mode"></a> |
 
 ### Playback segment configuration
 
-| Sound options (long press) | Playback segment |
-|:---:|:---:|
+|                                                                         Sound options (long press)                                                                          |                                                                                  Playback segment                                                                                   |
+|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
 | <a href="docs/screenshots/sound-longpress-menu.jpg"><img src="docs/screenshots/sound-longpress-menu.jpg" width="280" alt="Sound options with playback segment setting"></a> | <a href="docs/screenshots/playback-segment.jpg"><img src="docs/screenshots/playback-segment.jpg" width="280" alt="Playback segment configuration with start and end positions"></a> |
 
 ### Configuration and management
 
-| Board selection | Board management |
-|:---:|:---:|
+|                                                           Board selection                                                           |                                                             Board management                                                             |
+|:-----------------------------------------------------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------------------------------------------------------:|
 | <a href="docs/screenshots/board-selector.jpg"><img src="docs/screenshots/board-selector.jpg" width="280" alt="Board selection"></a> | <a href="docs/screenshots/board-management.jpg"><img src="docs/screenshots/board-management.jpg" width="280" alt="Board management"></a> |
 
-| Settings | Backup and restore |
-|:---:|:---:|
+|                                                           Settings                                                           |                                                           Backup and restore                                                           |
+|:----------------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------------------------------:|
 | <a href="docs/screenshots/settings.jpg"><img src="docs/screenshots/settings.jpg" width="280" alt="Application settings"></a> | <a href="docs/screenshots/backup-restore.jpg"><img src="docs/screenshots/backup-restore.jpg" width="280" alt="Backup and restore"></a> |
 
 Click any screenshot to view it at full resolution.

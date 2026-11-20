@@ -1,0 +1,30 @@
+﻿# Automatically detect text and binary files
+* text=auto
+
+# Gradle wrapper scripts
+/gradlew text eol=lf
+/gradlew.bat text eol=crlf
+
+# Source code and configuration
+*.kt text eol=lf
+*.kts text eol=lf
+*.java text eol=lf
+*.xml text eol=lf
+*.properties text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Explicitly preserve binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.jar binary
+*.keystore binary
+*.jks binary
+*.zip binary
+*.apk binary
+*.gitattributes text eol=lf

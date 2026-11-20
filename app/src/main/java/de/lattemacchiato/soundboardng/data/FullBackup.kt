@@ -2,7 +2,11 @@ package de.lattemacchiato.soundboardng.data
 
 import android.content.Context
 import android.net.Uri
+import android.provider.DocumentsContract
+import android.provider.OpenableColumns
 import android.webkit.MimeTypeMap
+import androidx.core.net.toUri
+import androidx.documentfile.provider.DocumentFile
 import de.lattemacchiato.soundboardng.audio.FolderAudioResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -10,6 +14,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.FileOutputStream
+import java.io.InputStream
+import java.security.MessageDigest
 import java.util.UUID
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
@@ -38,6 +44,295 @@ class FullBackup(
 ) {
     private val resolver get() = context.contentResolver
     private val folderResolver = FolderAudioResolver(context.contentResolver)
+
+    private fun originalFolderName(uri: Uri): String {
+        val name =
+            when (uri.scheme) {
+                "file" -> uri.path?.let { File(it).name }
+                "content" -> DocumentFile.fromTreeUri(context, uri)?.name
+                else -> null
+            }
+
+        return name
+            ?.takeIf {
+                it.isNotBlank() &&
+                    it != "." &&
+                    it != ".." &&
+                    '/' !in it &&
+                    '\\' !in it &&
+                    it.none { char -> char.isISOControl() }
+            }
+            ?: error("Cannot determine original audio folder name")
+    }
+
+    private fun requireExternalFolder(uri: Uri): DocumentFile {
+        require(
+            uri.scheme == "content" &&
+                uri.authority == "com.android.externalstorage.documents",
+        ) {
+            "Only local device storage or SD cards are supported for audio import"
+        }
+        val folder =
+            DocumentFile.fromTreeUri(context, uri)
+                ?: error("Cannot access selected external folder")
+
+        require(folder.isDirectory && folder.canRead() && folder.canWrite()) {
+            "Selected external folder is not readable and writable"
+        }
+
+        return folder
+    }
+
+    private fun folderUriWithinTree(
+        selectedTreeUri: Uri,
+        folder: DocumentFile,
+    ): Uri {
+        val documentId = DocumentsContract.getDocumentId(folder.uri)
+
+        return DocumentsContract.buildDocumentUriUsingTree(
+            selectedTreeUri,
+            documentId,
+        )
+    }
+
+    private fun createExternalFolder(
+        parent: DocumentFile,
+        preferredName: String,
+        createdFolders: MutableList<DocumentFile>,
+    ): DocumentFile {
+        val existingDocuments = parent.listFiles()
+
+        val existing =
+            existingDocuments.firstOrNull {
+                it.name.equals(preferredName, ignoreCase = true)
+            }
+
+        if (existing != null) {
+            require(existing.isDirectory) {
+                "External storage entry is not a directory: $preferredName"
+            }
+            require(existing.canRead() && existing.canWrite()) {
+                "Existing external audio folder is not readable and writable: $preferredName"
+            }
+            return existing
+        }
+
+        val existingIds =
+            existingDocuments
+                .map { DocumentsContract.getDocumentId(it.uri) }
+                .toSet()
+
+        val folder =
+            parent.createDirectory(preferredName)
+                ?: error("Cannot create external audio folder: $preferredName")
+
+        check(DocumentsContract.getDocumentId(folder.uri) !in existingIds) {
+            "Storage provider returned an existing directory instead of creating a new one"
+        }
+
+        createdFolders.add(folder)
+        return folder
+    }
+
+    private fun sha256(input: InputStream): ByteArray {
+        val digest = MessageDigest.getInstance("SHA-256")
+        val buffer = ByteArray(64 * 1024)
+
+        while (true) {
+            val count = input.read(buffer)
+            if (count < 0) break
+            digest.update(buffer, 0, count)
+        }
+
+        return digest.digest()
+    }
+
+    private fun hasSameContent(
+        source: File,
+        target: DocumentFile,
+    ): Boolean {
+        require(source.isFile) {
+            "Missing staged audio file: ${source.name}"
+        }
+
+        require(target.isFile) {
+            "Existing repository entry is not a file: ${target.name}"
+        }
+
+        val targetSize = target.length()
+
+        // Some SAF providers report 0 when the file size is unknown.
+        if (targetSize > 0L && source.length() != targetSize) {
+            return false
+        }
+
+        val sourceHash = source.inputStream().use(::sha256)
+        val targetHash =
+            (
+                resolver.openInputStream(target.uri)
+                    ?: error("Cannot read existing audio: ${target.name}")
+            ).use(::sha256)
+
+        return sourceHash.contentEquals(targetHash)
+    }
+
+    private fun numberedFilename(
+        original: String,
+        suffix: Int,
+    ): String {
+        val dot = original.lastIndexOf('.')
+        val base = if (dot > 0) original.substring(0, dot) else original
+        val extension = if (dot > 0) original.substring(dot) else ""
+
+        return "$base ($suffix)$extension"
+    }
+
+    private fun storeExternalAudio(
+        source: File,
+        directory: DocumentFile,
+        originalFilename: String,
+        createdFiles: MutableList<DocumentFile>,
+    ): Uri {
+        require(source.isFile) {
+            "Missing staged audio file: ${source.name}"
+        }
+
+        var filename = originalFilename
+        var suffix = 1
+
+        while (true) {
+            val existingDocuments = directory.listFiles()
+            val existingIds =
+                existingDocuments
+                    .map { DocumentsContract.getDocumentId(it.uri) }
+                    .toSet()
+
+            val existing =
+                existingDocuments.firstOrNull {
+                    it.name.equals(filename, ignoreCase = true)
+                }
+
+            if (existing == null) {
+                val extension = filename.substringAfterLast('.', "").lowercase()
+                val mimeType =
+                    android.webkit.MimeTypeMap
+                        .getSingleton()
+                        .getMimeTypeFromExtension(extension)
+                        ?.takeIf { it.startsWith("audio/", ignoreCase = true) }
+                        ?: "application/octet-stream"
+
+                val target =
+                    directory.createFile(
+                        mimeType,
+                        filename,
+                    ) ?: error("Cannot create external audio file: $filename")
+
+                check(DocumentsContract.getDocumentId(target.uri) !in existingIds) {
+                    "Storage provider returned an existing document instead of creating a new file"
+                }
+
+                createdFiles.add(target)
+
+                if (target.name != filename) {
+                    val actualName = target.name
+
+                    if (target.delete()) {
+                        createdFiles.remove(target)
+                    } else {
+                        error("Cannot remove incorrectly named external audio file: $actualName")
+                    }
+
+                    error(
+                        "External storage provider changed the audio filename: " +
+                            "$filename -> $actualName",
+                    )
+                }
+
+                try {
+                    val output =
+                        resolver.openOutputStream(target.uri, "w")
+                            ?: error("Cannot write external audio file: $filename")
+
+                    output.use { stream ->
+                        source.inputStream().use { input ->
+                            input.copyTo(stream)
+                        }
+                    }
+                } catch (e: Exception) {
+                    val deleted =
+                        try {
+                            target.delete()
+                        } catch (deleteError: Exception) {
+                            e.addSuppressed(deleteError)
+                            false
+                        }
+
+                    if (deleted) {
+                        createdFiles.remove(target)
+                    } else {
+                        throw IllegalStateException(
+                            "Cannot remove incomplete external audio file: $filename",
+                            e,
+                        )
+                    }
+
+                    throw e
+                }
+
+                return target.uri
+            }
+
+            if (existing.isFile && hasSameContent(source, existing)) {
+                return existing.uri
+            }
+            filename = numberedFilename(originalFilename, suffix++)
+        }
+    }
+
+    private fun rollbackExternalAudio(
+        createdFiles: List<DocumentFile>,
+        createdFolders: List<DocumentFile>,
+    ) {
+        val failed = mutableListOf<String>()
+
+        fun deleteSafDocument(document: DocumentFile) {
+            val name = document.name ?: document.uri.toString()
+
+            try {
+                if (!document.delete()) {
+                    failed += name
+                }
+            } catch (e: Exception) {
+                failed += "$name (${e.message ?: e.javaClass.simpleName})"
+            }
+        }
+
+        for (file in createdFiles.asReversed()) {
+            deleteSafDocument(file)
+        }
+
+        for (folder in createdFolders.asReversed()) {
+            deleteSafDocument(folder)
+        }
+
+        check(failed.isEmpty()) {
+            "Cannot remove externally imported files or folders: ${failed.joinToString()}"
+        }
+    }
+
+    private fun importedAudioFilename(
+        zipPath: String,
+        manifest: BackupFolderManifest?,
+    ): String {
+        val originalName =
+            manifest
+                ?.audioFiles
+                ?.firstOrNull { it.path == zipPath }
+                ?.name
+
+        return originalName ?: zipPath.removePrefix("audio/")
+    }
+
     private val json =
         Json {
             encodeDefaults = true
@@ -56,6 +351,7 @@ class FullBackup(
             val audioSources = mutableListOf<BackupAudioSource>()
             val folders = mutableListOf<BackupFolder>()
             val usedPaths = mutableSetOf<String>()
+            val audioFiles = mutableListOf<BackupFolderFile>()
 
             fun extensionOf(
                 uri: Uri,
@@ -81,6 +377,42 @@ class FullBackup(
                     ?: "bin"
             }
 
+            fun originalFilename(uri: Uri): String {
+                val name =
+                    when (uri.scheme) {
+                        "file" -> uri.path?.let { File(it).name }
+
+                        "content" ->
+                            resolver
+                                .query(
+                                    uri,
+                                    arrayOf(OpenableColumns.DISPLAY_NAME),
+                                    null,
+                                    null,
+                                    null,
+                                )?.use { cursor ->
+                                    if (cursor.moveToFirst()) {
+                                        cursor.getString(0)
+                                    } else {
+                                        null
+                                    }
+                                }
+
+                        else -> null
+                    }
+
+                return name
+                    ?.takeIf {
+                        it.isNotBlank() &&
+                            it != "." &&
+                            it != ".." &&
+                            '/' !in it &&
+                            '\\' !in it &&
+                            '\u0000' !in it
+                    }
+                    ?: "audio.${extensionOf(uri)}"
+            }
+
             fun addAudio(
                 source: Uri,
                 path: String,
@@ -94,7 +426,7 @@ class FullBackup(
                 val key = sound.type to sound.uri
                 if (key in paths) continue
 
-                val sourceUri = Uri.parse(sound.uri)
+                val sourceUri = sound.uri.toUri()
 
                 when (sound.type) {
                     SoundType.FILE -> {
@@ -102,6 +434,7 @@ class FullBackup(
                             "audio/${audioSources.size.toString().padStart(5, '0')}.${extensionOf(sourceUri)}"
 
                         addAudio(sourceUri, path)
+                        audioFiles += BackupFolderFile(path = path, name = originalFilename(sourceUri))
                         paths[key] = path
                     }
 
@@ -131,6 +464,7 @@ class FullBackup(
                             BackupFolder(
                                 folderPath = folderPath,
                                 files = manifestFiles,
+                                name = originalFolderName(sourceUri),
                             )
 
                         paths[key] = folderPath
@@ -138,11 +472,16 @@ class FullBackup(
                 }
             }
 
-            val manifest = BackupFolderManifest(folders)
+            val manifest =
+                BackupFolderManifest(
+                    folders = folders,
+                    audioFiles = audioFiles,
+                )
 
             BackupFolderValidator.validate(
-                manifest,
-                audioSources.map { it.path }.toSet(),
+                manifest = manifest,
+                zipEntries = audioSources.map { it.path }.toSet(),
+                version = VERSION,
             )
 
             val portable =
@@ -164,7 +503,7 @@ class FullBackup(
                         FullBackupEnvelope.serializer(),
                         FullBackupEnvelope(
                             format = FORMAT,
-                            version = 2,
+                            version = VERSION,
                             library = portable,
                             folderManifest = manifest,
                         ),
@@ -182,12 +521,12 @@ class FullBackup(
 
                     var total = 0L
 
-                    for (audio in audioSources) {
-                        zip.putNextEntry(ZipEntry(audio.path))
+                    for ((source, path) in audioSources) {
+                        zip.putNextEntry(ZipEntry(path))
 
                         val input =
-                            resolver.openInputStream(audio.source)
-                                ?: error("Cannot read audio: ${audio.source}")
+                            resolver.openInputStream(source)
+                                ?: error("Cannot read audio: $source")
 
                         input.use { stream ->
                             val buffer = ByteArray(64 * 1024)
@@ -224,73 +563,183 @@ class FullBackup(
         }
 
     /** Validate and extract to a private staging directory, then switch the DataStore. */
-    suspend fun restore(preview: FullBackupPreview) =
-        withContext(Dispatchers.IO) {
-            val root = File(context.filesDir, "backup-audio").apply { mkdirs() }
-            val stage = File(root, "stage-${UUID.randomUUID()}")
-            val destination = File(root, "import-${UUID.randomUUID()}")
-            require(stage.mkdirs()) { "Cannot create staging directory" }
-            var committed = false
-            try {
-                val scan = scan(preview.source, stage)
-                require(scan.audioCount == preview.audioCount && scan.audioBytes == preview.audioBytes) {
-                    "Backup changed since preview"
-                }
+    suspend fun restore(
+        preview: FullBackupPreview,
+        externalFolderUri: Uri? = null,
+    ) = withContext(Dispatchers.IO) {
+        val externalFolder = externalFolderUri?.let(::requireExternalFolder)
+        val createdExternalFiles = mutableListOf<DocumentFile>()
+        val createdExternalFolders = mutableListOf<DocumentFile>()
+        val externalAudioUris = mutableMapOf<String, Uri>()
+        val externalFolderUris = mutableMapOf<String, Uri>()
+        val root = File(context.filesDir, "backup-audio").apply { mkdirs() }
+        val stage = File(root, "stage-${UUID.randomUUID()}")
+        val destination = File(root, "import-${UUID.randomUUID()}")
+        require(stage.mkdirs()) { "Cannot create staging directory" }
+        var committed = false
+        try {
+            val scan = scan(preview.source, stage)
+            require(scan.audioCount == preview.audioCount && scan.audioBytes == preview.audioBytes) {
+                "Backup changed since preview"
+            }
 
-                scan.folderManifest?.let { manifest ->
-                    restoreFolderNames(stage, manifest)
-                }
+            scan.folderManifest?.let { manifest ->
+                restoreFolderNames(stage, manifest)
+            }
+            if (externalFolder != null) {
+                val audioPaths =
+                    scan.library.boards
+                        .flatMap { it.sounds }
+                        .filter { it.type == SoundType.FILE }
+                        .map { it.uri }
+                        .distinct()
 
+                for (zipPath in audioPaths) {
+                    val source = File(stage, zipPath.removePrefix("audio/"))
+                    val filename = importedAudioFilename(zipPath, scan.folderManifest)
+
+                    externalAudioUris[zipPath] =
+                        storeExternalAudio(
+                            source = source,
+                            directory = externalFolder,
+                            originalFilename = filename,
+                            createdFiles = createdExternalFiles,
+                        )
+                }
+                val folderPaths =
+                    scan.library.boards
+                        .flatMap { it.sounds }
+                        .filter { it.type == SoundType.FOLDER }
+                        .map { it.uri }
+                        .distinct()
+
+                for (folderPath in folderPaths) {
+                    val preferredName =
+                        scan.folderManifest
+                            ?.folders
+                            ?.firstOrNull { it.folderPath == folderPath }
+                            ?.name
+                            ?: folderPath.substringAfterLast('/')
+
+                    val targetFolder =
+                        createExternalFolder(
+                            parent = externalFolder,
+                            preferredName = preferredName,
+                            createdFolders = createdExternalFolders,
+                        )
+
+                    externalFolderUris[folderPath] =
+                        folderUriWithinTree(
+                            selectedTreeUri = externalFolderUri,
+                            folder = targetFolder,
+                        )
+                    val sourceFolder = File(stage, folderPath)
+                    require(sourceFolder.isDirectory) {
+                        "Missing staged audio folder: $folderPath"
+                    }
+
+                    val sourceFiles =
+                        sourceFolder.listFiles()
+                            ?: error("Cannot list staged audio folder: $folderPath")
+
+                    for (sourceFile in sourceFiles) {
+                        require(sourceFile.isFile) {
+                            "Unexpected entry in staged audio folder: ${sourceFile.name}"
+                        }
+
+                        storeExternalAudio(
+                            source = sourceFile,
+                            directory = targetFolder,
+                            originalFilename = sourceFile.name,
+                            createdFiles = createdExternalFiles,
+                        )
+                    }
+                }
+            }
+
+            if (externalFolder == null) {
                 require(stage.renameTo(destination)) { "Cannot finalize imported audio" }
-                val restored =
-                    scan.library.copy(
-                        boards =
-                            scan.library.boards.map { board ->
-                                board.copy(
-                                    sounds =
-                                        board.sounds.map { sound ->
-                                            val target =
+            }
+            val restored =
+                scan.library.copy(
+                    boards =
+                        scan.library.boards.map { board ->
+                            board.copy(
+                                sounds =
+                                    board.sounds.map { sound ->
+                                        val restoredUri =
+                                            if (externalFolder != null) {
                                                 when (sound.type) {
                                                     SoundType.FILE ->
-                                                        File(destination, sound.uri.removePrefix("audio/"))
+                                                        requireNotNull(externalAudioUris[sound.uri]) {
+                                                            "Missing external audio URI: ${sound.uri}"
+                                                        }
 
                                                     SoundType.FOLDER ->
-                                                        File(destination, sound.uri)
+                                                        requireNotNull(externalFolderUris[sound.uri]) {
+                                                            "Missing external folder URI: ${sound.uri}"
+                                                        }
                                                 }
+                                            } else {
+                                                val target =
+                                                    when (sound.type) {
+                                                        SoundType.FILE ->
+                                                            File(destination, sound.uri.removePrefix("audio/"))
 
-                                            sound.copy(uri = Uri.fromFile(target).toString())
-                                        },
-                                )
-                            },
-                    )
-                val previous = repository.snapshot()
-                val recovery = File(context.filesDir, "soundboard-before-import.json")
-                val tmp = File(context.filesDir, "soundboard-before-import.json.tmp")
-                try {
-                    tmp.writeText(
-                        json.encodeToString(
-                            ConfigurationRecoveryEnvelope.serializer(),
-                            ConfigurationRecoveryEnvelope("dev.co508.soundboard.configuration", 1, previous),
-                        ),
-                    )
-                    require(tmp.renameTo(recovery)) { "Cannot save recovery configuration" }
-                } finally {
-                    tmp.delete()
-                }
-                repository.restore(restored)
-                committed = true
+                                                        SoundType.FOLDER ->
+                                                            File(destination, sound.uri)
+                                                    }
+
+                                                Uri.fromFile(target)
+                                            }
+
+                                        sound.copy(uri = restoredUri.toString())
+                                    },
+                            )
+                        },
+                )
+            val previous = repository.snapshot()
+            val recovery = File(context.filesDir, "soundboard-before-import.json")
+            val tmp = File(context.filesDir, "soundboard-before-import.json.tmp")
+            try {
+                tmp.writeText(
+                    json.encodeToString(
+                        ConfigurationRecoveryEnvelope.serializer(),
+                        ConfigurationRecoveryEnvelope("dev.co508.soundboard.configuration", 1, previous),
+                    ),
+                )
+                require(tmp.renameTo(recovery)) { "Cannot save recovery configuration" }
             } finally {
-                stage.deleteRecursively()
-                if (!committed) destination.deleteRecursively()
+                tmp.delete()
             }
+            repository.restore(restored)
+            committed = true
+        } catch (e: Exception) {
+            if (!committed &&
+                (createdExternalFiles.isNotEmpty() || createdExternalFolders.isNotEmpty())
+            ) {
+                try {
+                    rollbackExternalAudio(
+                        createdFiles = createdExternalFiles,
+                        createdFolders = createdExternalFolders,
+                    )
+                } catch (rollbackError: Exception) {
+                    e.addSuppressed(rollbackError)
+                }
+            }
+            throw e
+        } finally {
+            stage.deleteRecursively()
+            if (!committed) destination.deleteRecursively()
         }
+    }
 
     private fun restoreFolderNames(
         stage: File,
         manifest: BackupFolderManifest,
     ) {
-        for (folder in manifest.folders) {
-            val directory = File(stage, folder.folderPath)
+        for ((folderPath, files) in manifest.folders) {
+            val directory = File(stage, folderPath)
             require(directory.isDirectory || directory.mkdirs()) {
                 "Cannot create restored folder"
             }
@@ -298,13 +747,12 @@ class FullBackup(
             val usedNames = mutableSetOf<String>()
             val renames = mutableListOf<Pair<File, File>>()
 
-            for (file in folder.files) {
-                val source = File(stage, file.path)
+            for ((path, original) in files) {
+                val source = File(stage, path)
                 require(source.isFile) {
-                    "Missing extracted folder audio: ${file.path}"
+                    "Missing extracted folder audio: $path"
                 }
 
-                val original = file.name
                 val dot = original.lastIndexOf('.')
                 val base = if (dot > 0) original.substring(0, dot) else original
                 val extension = if (dot > 0) original.substring(dot) else ""
@@ -416,22 +864,26 @@ class FullBackup(
                             null
                         }
                     val configBuffer = if (isConfig) java.io.ByteArrayOutputStream() else null
-                    try {
+                    output.use { stream ->
                         val buffer = ByteArray(64 * 1024)
+
                         while (true) {
                             val n = zip.read(buffer)
                             if (n < 0) break
+
                             if (isConfig) {
-                                require(configBuffer!!.size() + n <= MAX_CONFIG_BYTES) { "Configuration too large" }
+                                require(configBuffer!!.size() + n <= MAX_CONFIG_BYTES) {
+                                    "Configuration too large"
+                                }
                                 configBuffer.write(buffer, 0, n)
                             } else {
                                 bytes += n
-                                require(bytes <= MAX_AUDIO_BYTES) { "Audio data too large" }
-                                output?.write(buffer, 0, n)
+                                require(bytes <= MAX_AUDIO_BYTES) {
+                                    "Audio data too large"
+                                }
+                                stream?.write(buffer, 0, n)
                             }
                         }
-                    } finally {
-                        output?.close()
                     }
                     if (isConfig) config = configBuffer!!.toByteArray()
                     zip.closeEntry()
@@ -454,16 +906,17 @@ class FullBackup(
             "Unsupported ZIP backup version"
         }
 
-        if (envelope.version == 2) {
+        if (envelope.version >= 2) {
             require(envelope.folderManifest != null) {
                 "Missing folder manifest in ZIP backup"
             }
         }
 
-        if (envelope.version == 2) {
+        if (envelope.version >= 2) {
             BackupFolderValidator.validate(
                 manifest = requireNotNull(envelope.folderManifest),
                 zipEntries = names,
+                version = envelope.version,
             )
         } else {
             require(names.none { it.startsWith("folders/") }) {
@@ -505,7 +958,7 @@ class FullBackup(
                             it.uri in names && it.uri.startsWith("audio/")
 
                         SoundType.FOLDER ->
-                            envelope.version == 2 && it.uri in folderPaths
+                            envelope.version >= 2 && it.uri in folderPaths
                     }
             } &&
                 library.boards.all { board ->
@@ -531,7 +984,7 @@ class FullBackup(
 
     companion object {
         private const val FORMAT = "dev.co508.soundboard.full-backup"
-        private const val VERSION = 2
+        private const val VERSION = 3
         private const val CONFIG_ENTRY = "configuration.json"
         private const val MAX_FILES = 10000
         private const val MAX_CONFIG_BYTES = 10 * 1024 * 1024

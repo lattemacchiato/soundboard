@@ -12,6 +12,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -39,7 +40,7 @@ fun SoundSegmentDialog(
     onDismiss: () -> Unit,
 ) {
     var startMs by remember(sound.id) {
-        mutableStateOf(sound.startPositionMs)
+        mutableLongStateOf(sound.startPositionMs)
     }
     var endMs by remember(sound.id) {
         mutableStateOf(sound.endPositionMs)
@@ -204,7 +205,7 @@ fun SoundSegmentDialog(
                                 endText.isNotBlank() &&
                                     (
                                         parseSegmentTime(endText)?.let {
-                                            it <= effectiveStart || it > duration
+                                            it !in (effectiveStart + 1)..duration
                                         } ?: true
                                     ),
                             keyboardOptions =

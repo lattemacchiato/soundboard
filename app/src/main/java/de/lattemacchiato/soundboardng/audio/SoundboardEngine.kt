@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Mixes any number of looping sounds, each with its own gain.
@@ -63,6 +64,10 @@ class SoundboardEngine(
     private val fadeScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val fadeJobs = mutableMapOf<String, Job>()
 
+    private val fadeStateTracker = FadeStateTracker()
+
+    val fadeStates: StateFlow<Map<String, FadeStateTracker.State>> =
+        fadeStateTracker.states
     private val segmentFadeJobs = mutableMapOf<String, Job>()
     private val fadeFactors = mutableMapOf<String, Float>()
     private val segmentFadeFactors = mutableMapOf<String, Float>()
@@ -103,6 +108,7 @@ class SoundboardEngine(
     private fun cancelFade(id: String) {
         fadeJobs.remove(id)?.cancel()
         fadingOut.remove(id)
+        fadeStateTracker.clear(id)
     }
 
     private fun cancelSegmentFade(id: String) {
@@ -152,7 +158,7 @@ class SoundboardEngine(
                         updateVolume(sound.id)
                     }
 
-                    delay(16L)
+                    delay(16.milliseconds)
                 }
             }
     }
@@ -170,12 +176,15 @@ class SoundboardEngine(
         target: Float,
         durationMs: Int,
         finished: () -> Unit = {},
+        showFeedback: Boolean = false,
     ) {
         if (target == 0f) cancelSegmentFade(id)
         cancelFade(id)
         if (target == 0f) fadingOut.add(id)
+
         val start = fadeFactors[id] ?: 1f
         val duration = durationMs.coerceIn(0, 5000)
+
         if (duration == 0 || start == target) {
             fadingOut.remove(id)
             fadeFactors[id] = target
@@ -183,18 +192,36 @@ class SoundboardEngine(
             finished()
             return
         }
+
+        if (showFeedback) {
+            val state =
+                if (target == 0f) {
+                    FadeStateTracker.State.FADING_OUT
+                } else {
+                    FadeStateTracker.State.FADING_IN
+                }
+
+            fadeStateTracker.start(id, state)
+        }
+
         fadeJobs[id] =
             fadeScope.launch {
                 val startTime = SystemClock.uptimeMillis()
                 while (true) {
-                    val fraction = ((SystemClock.uptimeMillis() - startTime).toFloat() / duration).coerceIn(0f, 1f)
+                    val fraction =
+                        ((SystemClock.uptimeMillis() - startTime).toFloat() / duration)
+                            .coerceIn(0f, 1f)
+
                     fadeFactors[id] = start + (target - start) * fraction
                     updateVolume(id)
+
                     if (fraction >= 1f) break
-                    delay(16L)
+                    delay(16.milliseconds)
                 }
+
                 fadeJobs.remove(id)
                 fadingOut.remove(id)
+                fadeStateTracker.clear(id)
                 finished()
             }
     }
@@ -233,6 +260,15 @@ class SoundboardEngine(
             if (players[sound.id] != null) {
                 release(sound.id)
             }
+
+            // Immediate visual feedback while the folder is being loaded.
+            if (sound.fadeInMs > 0) {
+                fadeStateTracker.start(
+                    sound.id,
+                    FadeStateTracker.State.FADING_IN,
+                )
+            }
+
             loadFolder(sound) { player ->
                 gains[sound.id] = sound.gain
                 cancelFade(sound.id)
@@ -254,7 +290,12 @@ class SoundboardEngine(
                 pausedByFocusLoss.remove(sound.id)
                 player.play()
                 setStatus(sound.id, PlaybackStatus.PLAYING)
-                animateFade(sound.id, 1f, sound.fadeInMs)
+                animateFade(
+                    id = sound.id,
+                    target = 1f,
+                    durationMs = sound.fadeInMs,
+                    showFeedback = true,
+                )
             }
             return
         }
@@ -288,7 +329,12 @@ class SoundboardEngine(
         pausedByFocusLoss.remove(sound.id)
         player.play()
         setStatus(sound.id, PlaybackStatus.PLAYING)
-        animateFade(sound.id, 1f, sound.fadeInMs)
+        animateFade(
+            id = sound.id,
+            target = 1f,
+            durationMs = sound.fadeInMs,
+            showFeedback = true,
+        )
         startPlaybackFadeMonitor(sound, player)
     }
 
@@ -329,7 +375,12 @@ class SoundboardEngine(
         }
         player.play()
         setStatus(sound.id, PlaybackStatus.PLAYING)
-        animateFade(sound.id, 1f, sound.fadeInMs)
+        animateFade(
+            id = sound.id,
+            target = 1f,
+            durationMs = sound.fadeInMs,
+            showFeedback = true,
+        )
         startPlaybackFadeMonitor(sound, player)
     }
 
@@ -355,11 +406,15 @@ class SoundboardEngine(
         abandonFocusIfSilent()
     }
 
-    fun pause(id: String) = pauseNow(id)
-
     fun pause(sound: Sound) {
         if (_statuses.value[sound.id] != PlaybackStatus.PLAYING) return
-        animateFade(sound.id, 0f, sound.fadeOutMs) { pauseNow(sound.id) }
+        animateFade(
+            id = sound.id,
+            target = 0f,
+            durationMs = sound.fadeOutMs,
+            finished = { pauseNow(sound.id) },
+            showFeedback = true,
+        )
     }
 
     /** Fade out and reset to the beginning; a subsequent tap starts fresh. */
@@ -368,7 +423,13 @@ class SoundboardEngine(
             release(sound.id)
             return
         }
-        animateFade(sound.id, 0f, sound.fadeOutMs) { release(sound.id) }
+        animateFade(
+            id = sound.id,
+            target = 0f,
+            durationMs = sound.fadeOutMs,
+            finished = { release(sound.id) },
+            showFeedback = true,
+        )
     }
 
     fun toggle(sound: Sound) {
@@ -406,11 +467,21 @@ class SoundboardEngine(
         soundTypes.remove(id)
         gains.remove(id)
         pausedByFocusLoss.remove(id)
-        _statuses.value = _statuses.value - id
+        _statuses.value -= id
         abandonFocusIfSilent()
     }
 
-    /** Releases everything. The engine is unusable afterwards. */
+    /**
+     * Permanently shuts down the engine and releases all resources.
+     *
+     * Currently unused by design: SoundboardEngine is owned by the Application
+     * and must survive Activity recreation and navigation.
+     *
+     * Normal cleanup releases individual players via release(id).
+     * Keep this method for a potential explicit application shutdown or
+     * future lifecycle changes. Do not call it during Activity disposal.
+     */
+    @Suppress("unused")
     fun releaseAll() {
         folderLoadJobs.values.toList().forEach { it.cancel() }
         folderLoadJobs.clear()
@@ -419,6 +490,7 @@ class SoundboardEngine(
         fadeJobs.clear()
         fadeFactors.clear()
         fadingOut.clear()
+        fadeStateTracker.clearAll()
         segmentFadeJobs.values.toList().forEach { it.cancel() }
         segmentFadeJobs.clear()
         segmentFadeFactors.clear()
@@ -502,6 +574,11 @@ class SoundboardEngine(
                         kotlinx.coroutines.currentCoroutineContext()[Job]
                     ) {
                         folderLoadJobs.remove(sound.id)
+
+                        // Clear loading feedback only for this load attempt.
+                        if (_statuses.value[sound.id] != PlaybackStatus.PLAYING) {
+                            fadeStateTracker.clear(sound.id)
+                        }
                     }
                 }
             }
@@ -622,7 +699,7 @@ class SoundboardEngine(
         id: String,
         status: PlaybackStatus,
     ) {
-        _statuses.value = _statuses.value + (id to status)
+        _statuses.value += id to status
     }
 
     private fun abandonFocusIfSilent() {
