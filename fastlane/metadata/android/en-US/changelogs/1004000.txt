@@ -1,0 +1,10 @@
+Features:
+
+- allow multiple sound tiles referencing the same audio
+- blink sound tiles during manual fades
+- support local external storage for ZIP restore
+
+Bug Fixes:
+
+- filter unsupported files from folder playback
+- preserve folder names and reuse existing SAF folders
