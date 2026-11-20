@@ -3,7 +3,6 @@ package de.lattemacchiato.soundboardng.audio
 import android.content.ContentResolver
 import android.net.Uri
 import android.provider.DocumentsContract
-import android.webkit.MimeTypeMap
 import java.io.File
 
 /**
@@ -44,16 +43,8 @@ class FolderAudioResolver(
             .listFiles()
             ?.asSequence()
             ?.filter { it.isFile && it.canRead() }
-            ?.filter { file ->
-                val extension = file.extension.lowercase()
-                val mimeType =
-                    MimeTypeMap
-                        .getSingleton()
-                        .getMimeTypeFromExtension(extension)
-
-                mimeType?.startsWith("audio/", ignoreCase = true) == true ||
-                    extension in setOf("mp3", "wav", "ogg", "flac", "m4a", "aac", "opus", "aiff", "aif", "amr")
-            }?.map { AudioFile(uri = Uri.fromFile(it), name = it.name) }
+            ?.filter { file -> isSupportedFolderAudioFile(file.name) }
+            ?.map { AudioFile(uri = Uri.fromFile(it), name = it.name) }
             ?.toList()
             ?: emptyList()
     }
@@ -102,27 +93,8 @@ class FolderAudioResolver(
                     while (cursor.moveToNext()) {
                         val mimeType = cursor.getString(mimeColumn)
                         val name = cursor.getString(nameColumn) ?: continue
-                        val extension = name.substringAfterLast('.', "").lowercase()
-
                         if (mimeType == DocumentsContract.Document.MIME_TYPE_DIR) continue
-
-                        val isAudio =
-                            mimeType?.startsWith("audio/", ignoreCase = true) == true ||
-                                extension in
-                                setOf(
-                                    "mp3",
-                                    "wav",
-                                    "ogg",
-                                    "flac",
-                                    "m4a",
-                                    "aac",
-                                    "opus",
-                                    "aiff",
-                                    "aif",
-                                    "amr",
-                                )
-
-                        if (!isAudio) continue
+                        if (!isSupportedFolderAudioFile(name, mimeType)) continue
 
                         val documentId = cursor.getString(idColumn) ?: continue
 
