@@ -1,5 +1,6 @@
 package de.lattemacchiato.soundboardng.data
 
+import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -20,6 +21,88 @@ class BackupFolderManifestTest {
     @Test
     fun validFolderManifest() {
         BackupFolderValidator.validate(manifest(), setOf(audioPath))
+    }
+
+    @Test
+    fun originalFolderNameIsPreserved() {
+        val folder =
+            BackupFolder(
+                folderPath = folderPath,
+                files = listOf(BackupFolderFile(audioPath, "Original.mp3")),
+                name = "0002",
+            )
+
+        BackupFolderValidator.validate(
+            manifest = BackupFolderManifest(folders = listOf(folder)),
+            zipEntries = setOf(audioPath),
+            version = 3,
+        )
+
+        assertEquals("0002", folder.name)
+    }
+
+    @Test
+    fun legacyManifestWithoutFolderNameIsAccepted() {
+        val legacyJson =
+            """
+            {
+                "folders": [
+                    {
+                        "folderPath": "folders/00000",
+                        "files": [
+                            {
+                                "path": "folders/00000/00000.mp3",
+                                "name": "Original.mp3"
+                            }
+                        ]
+                    }
+                ]
+            }
+            """.trimIndent()
+
+        val decoded =
+            Json.decodeFromString<BackupFolderManifest>(legacyJson)
+
+        assertEquals(null, decoded.folders.single().name)
+
+        BackupFolderValidator.validate(
+            manifest = decoded,
+            zipEntries = setOf(audioPath),
+            version = 2,
+        )
+    }
+
+    @Test
+    fun invalidOriginalFolderNamesAreRejected() {
+        val invalidNames =
+            listOf(
+                "",
+                " ",
+                ".",
+                "..",
+                "folder/audio",
+                "folder\\audio",
+                "audio\u0000folder",
+                "audio\tfolder",
+                "audio\nfolder",
+            )
+
+        invalidNames.forEach { name ->
+            val folder =
+                BackupFolder(
+                    folderPath = folderPath,
+                    files = emptyList(),
+                    name = name,
+                )
+
+            assertThrows("Folder name: $name", IllegalArgumentException::class.java) {
+                BackupFolderValidator.validate(
+                    manifest = BackupFolderManifest(folders = listOf(folder)),
+                    zipEntries = emptySet(),
+                    version = 3,
+                )
+            }
+        }
     }
 
     @Test

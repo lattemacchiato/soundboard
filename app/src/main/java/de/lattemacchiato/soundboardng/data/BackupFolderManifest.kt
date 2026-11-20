@@ -12,6 +12,7 @@ internal data class BackupFolderManifest(
 internal data class BackupFolder(
     val folderPath: String,
     val files: List<BackupFolderFile>,
+    val name: String? = null,
 )
 
 @Serializable
@@ -25,7 +26,10 @@ internal object BackupFolderValidator {
     private val filePattern = Regex("folders/[0-9]{5}/[0-9]{5}\\.[a-zA-Z0-9]{1,8}")
     private val audioFilePattern = Regex("audio/[0-9]{5}\\.[a-zA-Z0-9]{1,8}")
 
-    private fun requireValidFilename(name: String) {
+    private fun requireValidFilename(
+        name: String,
+        description: String = "original audio filename",
+    ) {
         require(
             name.isNotBlank() &&
                 name != "." &&
@@ -34,7 +38,7 @@ internal object BackupFolderValidator {
                 '\\' !in name &&
                 name.none { it.isISOControl() },
         ) {
-            "Invalid original audio filename"
+            "Invalid $description"
         }
     }
 
@@ -50,9 +54,16 @@ internal object BackupFolderValidator {
 
         val filePaths = mutableSetOf<String>()
 
-        for ((folderPath, files) in manifest.folders) {
+        for (folder in manifest.folders) {
+            val folderPath = folder.folderPath
+            val files = folder.files
+
             require(folderPattern.matches(folderPath)) {
                 "Invalid backup folder path"
+            }
+
+            folder.name?.let {
+                requireValidFilename(it, "original folder name")
             }
 
             for ((path, name) in files) {
