@@ -45,6 +45,26 @@ class FullBackup(
     private val resolver get() = context.contentResolver
     private val folderResolver = FolderAudioResolver(context.contentResolver)
 
+    private fun originalFolderName(uri: Uri): String {
+        val name =
+            when (uri.scheme) {
+                "file" -> uri.path?.let { File(it).name }
+                "content" -> DocumentFile.fromTreeUri(context, uri)?.name
+                else -> null
+            }
+
+        return name
+            ?.takeIf {
+                it.isNotBlank() &&
+                    it != "." &&
+                    it != ".." &&
+                    '/' !in it &&
+                    '\\' !in it &&
+                    it.none { char -> char.isISOControl() }
+            }
+            ?: error("Cannot determine original audio folder name")
+    }
+
     private fun requireExternalFolder(uri: Uri): DocumentFile {
         require(
             uri.scheme == "content" &&
@@ -80,26 +100,31 @@ class FullBackup(
         preferredName: String,
         createdFolders: MutableList<DocumentFile>,
     ): DocumentFile {
-        val existingIds =
-            parent
-                .listFiles()
-                .map { DocumentsContract.getDocumentId(it.uri) }
-                .toSet()
-        var name = preferredName
-        var suffix = 1
+        val existingDocuments = parent.listFiles()
 
-        while (
-            parent.listFiles().any {
-                it.name.equals(name, ignoreCase = true)
+        val existing =
+            existingDocuments.firstOrNull {
+                it.name.equals(preferredName, ignoreCase = true)
             }
-        ) {
-            name = "$preferredName ($suffix)"
-            suffix++
+
+        if (existing != null) {
+            require(existing.isDirectory) {
+                "External storage entry is not a directory: $preferredName"
+            }
+            require(existing.canRead() && existing.canWrite()) {
+                "Existing external audio folder is not readable and writable: $preferredName"
+            }
+            return existing
         }
 
+        val existingIds =
+            existingDocuments
+                .map { DocumentsContract.getDocumentId(it.uri) }
+                .toSet()
+
         val folder =
-            parent.createDirectory(name)
-                ?: error("Cannot create external audio folder: $name")
+            parent.createDirectory(preferredName)
+                ?: error("Cannot create external audio folder: $preferredName")
 
         check(DocumentsContract.getDocumentId(folder.uri) !in existingIds) {
             "Storage provider returned an existing directory instead of creating a new one"
@@ -439,6 +464,7 @@ class FullBackup(
                             BackupFolder(
                                 folderPath = folderPath,
                                 files = manifestFiles,
+                                name = originalFolderName(sourceUri),
                             )
 
                         paths[key] = folderPath
@@ -589,12 +615,10 @@ class FullBackup(
 
                 for (folderPath in folderPaths) {
                     val preferredName =
-                        scan.library.boards
-                            .flatMap { it.sounds }
-                            .first { it.type == SoundType.FOLDER && it.uri == folderPath }
-                            .name
-                            .trim()
-                            .takeIf { it.isNotEmpty() && it != "." && it != ".." && '/' !in it && '\\' !in it }
+                        scan.folderManifest
+                            ?.folders
+                            ?.firstOrNull { it.folderPath == folderPath }
+                            ?.name
                             ?: folderPath.substringAfterLast('/')
 
                     val targetFolder =
