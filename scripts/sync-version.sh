@@ -90,6 +90,12 @@ render_changelog() {
             -e 's/ ?\(\[[^]]*\]\([^)]*\)\)//g' \
             -e 's/\[([^]]*)\]\([^)]*\)/\1/g' \
             -e 's/[[:space:]]+$//' |
+        awk '
+            /^- / {
+                if (seen_item[$0]++) next
+            }
+            { print }
+        ' |
         cat -s |
         sed -e '/./,$!d' |
         head -c 500
