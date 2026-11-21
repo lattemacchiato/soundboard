@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -40,6 +42,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import de.lattemacchiato.soundboardng.SoundboardApp
 import de.lattemacchiato.soundboardng.data.BackupPreview
+import de.lattemacchiato.soundboardng.data.BoardImportMerger
 import de.lattemacchiato.soundboardng.data.ConfigurationBackup
 import de.lattemacchiato.soundboardng.data.FullBackup
 import de.lattemacchiato.soundboardng.data.FullBackupPreview
@@ -54,16 +57,70 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
     val fullBackup = remember(app) { FullBackup(app, app.repository) }
     val scope = rememberCoroutineScope()
     val locked by app.lockSettings.locked.collectAsState()
+    val boards by app.repository.boards.collectAsState(initial = emptyList())
+    var showExportBoardDialog by remember { mutableStateOf(false) }
+    var selectedExportBoardIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var pendingExportBoardIds by remember { mutableStateOf<Set<String>?>(null) }
     var busy by remember { mutableStateOf(false) }
     var preview by remember { mutableStateOf<BackupPreview?>(null) }
     var fullPreview by remember { mutableStateOf<FullBackupPreview?>(null) }
+    var selectedImportBoardIds by remember {
+        mutableStateOf<Set<String>>(emptySet())
+    }
+    var importMode by remember {
+        mutableStateOf(BoardImportMerger.Mode.ADD)
+    }
+    var showReplaceConfirmation by remember {
+        mutableStateOf(false)
+    }
     var message by remember { mutableStateOf<String?>(null) }
     var useExternalStorage by remember { mutableStateOf(false) }
     var pendingExternalRestore by remember { mutableStateOf<FullBackupPreview?>(null) }
+    var pendingExternalBoardIds by remember {
+        mutableStateOf<Set<String>>(emptySet())
+    }
+    var pendingExternalImportMode by remember {
+        mutableStateOf(BoardImportMerger.Mode.ADD)
+    }
+
+    fun startInternalZipImport(
+        candidate: FullBackupPreview,
+        selectedBoardIds: Set<String>,
+        mode: BoardImportMerger.Mode,
+    ) {
+        scope.launch {
+            busy = true
+            try {
+                if (mode == BoardImportMerger.Mode.REPLACE) {
+                    app.engine.pauseAll()
+                    app.repository.sounds
+                        .first()
+                        .forEach { app.engine.release(it.id) }
+                }
+
+                fullBackup.restore(
+                    preview = candidate,
+                    selectedBoardIds = selectedBoardIds,
+                    mode = mode,
+                )
+
+                fullPreview = null
+                message = "ZIP import completed successfully."
+            } catch (e: Exception) {
+                message = "ZIP import failed: ${e.message}"
+            } finally {
+                busy = false
+            }
+        }
+    }
     val selectImportFolder =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
             val candidate = pendingExternalRestore
             pendingExternalRestore = null
+
+            if (uri == null && candidate != null) {
+                fullPreview = candidate
+            }
 
             if (uri != null && candidate != null && !locked) {
                 try {
@@ -81,13 +138,17 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                     scope.launch {
                         busy = true
                         try {
-                            app.engine.pauseAll()
-                            app.repository.sounds
-                                .first()
-                                .forEach { app.engine.release(it.id) }
+                            if (pendingExternalImportMode == BoardImportMerger.Mode.REPLACE) {
+                                app.engine.pauseAll()
+                                app.repository.sounds
+                                    .first()
+                                    .forEach { app.engine.release(it.id) }
+                            }
                             fullBackup.restore(
                                 preview = candidate,
                                 externalFolderUri = uri,
+                                selectedBoardIds = pendingExternalBoardIds,
+                                mode = pendingExternalImportMode,
                             )
                             fullPreview = null
                             message = "Full backup restored successfully."
@@ -145,13 +206,17 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                 scope.launch {
                     busy = true
                     try {
-                        fullBackup.export(uri)
+                        fullBackup.export(
+                            destination = uri,
+                            selectedBoardIds = pendingExportBoardIds,
+                        )
                         message = "Full backup exported successfully."
                     } catch (
                         e: Exception,
                     ) {
                         message = "ZIP export failed: ${e.message}"
                     } finally {
+                        pendingExportBoardIds = null
                         busy = false
                     }
                 }
@@ -163,7 +228,10 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                 scope.launch {
                     busy = true
                     try {
-                        fullPreview = fullBackup.inspect(uri)
+                        val inspected = fullBackup.inspect(uri)
+                        selectedImportBoardIds = inspected.boards.map { it.id }.toSet()
+                        importMode = BoardImportMerger.Mode.ADD
+                        fullPreview = inspected
                     } catch (
                         e: Exception,
                     ) {
@@ -221,11 +289,79 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
             Button(enabled = !locked && !busy, onClick = { exportZip.launch("soundboard-full-backup.zip") }) {
                 Text("Export full ZIP")
             }
+            OutlinedButton(
+                enabled = !locked && !busy && boards.isNotEmpty(),
+                onClick = {
+                    selectedExportBoardIds = boards.map { it.id }.toSet()
+                    showExportBoardDialog = true
+                },
+            ) {
+                Text("Export selected boards")
+            }
             OutlinedButton(enabled = !locked && !busy, onClick = {
                 importZip.launch(arrayOf("application/zip", "application/octet-stream"))
-            }) { Text("Restore full ZIP") }
+            }) { Text("Import ZIP") }
             if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
+    }
+    if (showExportBoardDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showExportBoardDialog = false
+            },
+            title = {
+                Text("Select boards to export")
+            },
+            text = {
+                Column(
+                    modifier =
+                        Modifier
+                            .heightIn(max = 360.dp)
+                            .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    boards.forEach { board ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Checkbox(
+                                checked = board.id in selectedExportBoardIds,
+                                onCheckedChange = { checked ->
+                                    selectedExportBoardIds =
+                                        if (checked) {
+                                            selectedExportBoardIds + board.id
+                                        } else {
+                                            selectedExportBoardIds - board.id
+                                        }
+                                },
+                            )
+                            Text(board.name)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = selectedExportBoardIds.isNotEmpty(),
+                    onClick = {
+                        pendingExportBoardIds = selectedExportBoardIds
+                        showExportBoardDialog = false
+                        exportZip.launch("soundboard-selected-boards.zip")
+                    },
+                ) {
+                    Text("Export ZIP")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showExportBoardDialog = false
+                    },
+                ) {
+                    Text("Cancel")
+                }
+            },
+        )
     }
 
     preview?.let { candidate ->
@@ -286,7 +422,71 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                             "${candidate.audioCount} audio file(s).",
                     )
                     Text(
-                        "All current boards and settings will be replaced.",
+                        "Select boards to import:",
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+
+                    Column(
+                        modifier =
+                            Modifier
+                                .heightIn(max = 240.dp)
+                                .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        candidate.boards.forEach { board ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(
+                                    checked = board.id in selectedImportBoardIds,
+                                    onCheckedChange = { checked ->
+                                        selectedImportBoardIds =
+                                            if (checked) {
+                                                selectedImportBoardIds + board.id
+                                            } else {
+                                                selectedImportBoardIds - board.id
+                                            }
+                                    },
+                                    enabled = !busy,
+                                )
+                                Text("${board.name} (${board.sounds.size} sounds)")
+                            }
+                        }
+                    }
+                    Text(
+                        "Import mode:",
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = importMode == BoardImportMerger.Mode.ADD,
+                            onClick = { importMode = BoardImportMerger.Mode.ADD },
+                            enabled = !busy,
+                        )
+                        Text("ADD – Keep existing boards and settings")
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = importMode == BoardImportMerger.Mode.REPLACE,
+                            onClick = { importMode = BoardImportMerger.Mode.REPLACE },
+                            enabled = !busy,
+                        )
+                        Text("REPLACE – Replace all boards and settings")
+                    }
+                    Text(
+                        if (importMode == BoardImportMerger.Mode.ADD) {
+                            "Selected boards will be added. Existing boards and settings " +
+                                "will be preserved. Duplicate board names will be renamed."
+                        } else {
+                            "WARNING: All existing boards and settings will be replaced " +
+                                "by the selected boards and the backup settings."
+                        },
+                        color =
+                            if (importMode == BoardImportMerger.Mode.REPLACE) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
                     )
                     Text(
                         if (useExternalStorage) {
@@ -326,33 +526,84 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                 }
             },
             confirmButton = {
-                TextButton(enabled = !locked && !busy, onClick = {
-                    if (useExternalStorage) {
-                        pendingExternalRestore = candidate
-                        fullPreview = null
-                        selectImportFolder.launch(null)
-                    } else {
-                        scope.launch {
-                            busy = true
-                            try {
-                                app.engine.pauseAll()
-                                app.repository.sounds
-                                    .first()
-                                    .forEach { app.engine.release(it.id) }
-                                fullBackup.restore(candidate)
-                                fullPreview = null
-                                message = "Full backup restored successfully."
-                            } catch (e: Exception) {
-                                message = "ZIP restore failed: ${e.message}"
-                            } finally {
-                                busy = false
-                            }
+                TextButton(
+                    enabled = !locked && !busy && selectedImportBoardIds.isNotEmpty(),
+                    onClick = {
+                        if (importMode == BoardImportMerger.Mode.REPLACE) {
+                            showReplaceConfirmation = true
+                        } else if (useExternalStorage) {
+                            pendingExternalRestore = candidate
+                            pendingExternalBoardIds = selectedImportBoardIds.toSet()
+                            pendingExternalImportMode = importMode
+                            fullPreview = null
+                            selectImportFolder.launch(null)
+                        } else {
+                            startInternalZipImport(
+                                candidate = candidate,
+                                selectedBoardIds = selectedImportBoardIds.toSet(),
+                                mode = importMode,
+                            )
                         }
-                    }
-                }) { Text("Restore") }
+                    },
+                ) { Text("Restore") }
             },
             dismissButton = {
                 TextButton(enabled = !busy, onClick = { fullPreview = null }) { Text("Cancel") }
+            },
+        )
+    }
+    if (showReplaceConfirmation) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!busy) showReplaceConfirmation = false
+            },
+            title = {
+                Text("Replace existing boards?")
+            },
+            text = {
+                Text(
+                    "WARNING: All existing boards and settings will be replaced " +
+                        "by the selected boards and the backup settings.\n\n" +
+                        "This action cannot be undone directly. " +
+                        "A recovery copy of the previous configuration will be saved.",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !busy && !locked,
+                    onClick = {
+                        val candidate = fullPreview
+                        showReplaceConfirmation = false
+
+                        if (candidate != null && selectedImportBoardIds.isNotEmpty()) {
+                            if (useExternalStorage) {
+                                pendingExternalRestore = candidate
+                                pendingExternalBoardIds = selectedImportBoardIds.toSet()
+                                pendingExternalImportMode = BoardImportMerger.Mode.REPLACE
+                                fullPreview = null
+                                selectImportFolder.launch(null)
+                            } else {
+                                startInternalZipImport(
+                                    candidate = candidate,
+                                    selectedBoardIds = selectedImportBoardIds.toSet(),
+                                    mode = BoardImportMerger.Mode.REPLACE,
+                                )
+                            }
+                        }
+                    },
+                ) {
+                    Text("Replace")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !busy,
+                    onClick = {
+                        showReplaceConfirmation = false
+                    },
+                ) {
+                    Text("Cancel")
+                }
             },
         )
     }

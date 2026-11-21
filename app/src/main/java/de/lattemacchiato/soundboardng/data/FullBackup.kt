@@ -35,6 +35,7 @@ data class FullBackupPreview(
     val soundCount: Int,
     val audioCount: Int,
     val audioBytes: Long,
+    val boards: List<SoundBoard>,
 )
 
 /** Self-contained backup: ZIP with configuration.json and audio/ files. */
@@ -344,211 +345,217 @@ class FullBackup(
         val path: String,
     )
 
-    suspend fun export(destination: Uri) =
-        withContext(Dispatchers.IO) {
-            val library = repository.snapshot()
-            val paths = linkedMapOf<Pair<SoundType, String>, String>()
-            val audioSources = mutableListOf<BackupAudioSource>()
-            val folders = mutableListOf<BackupFolder>()
-            val usedPaths = mutableSetOf<String>()
-            val audioFiles = mutableListOf<BackupFolderFile>()
-
-            fun extensionOf(
-                uri: Uri,
-                originalName: String? = null,
-            ): String {
-                val extensionFromName =
-                    originalName
-                        ?.substringAfterLast('.', "")
-                        ?.takeIf { it.matches(Regex("[a-zA-Z0-9]{1,8}")) }
-
-                val extensionFromUri =
-                    uri.lastPathSegment
-                        ?.substringAfterLast('.', "")
-                        ?.takeIf { it.matches(Regex("[a-zA-Z0-9]{1,8}")) }
-
-                if (extensionFromName != null) return extensionFromName
-                if (extensionFromUri != null) return extensionFromUri
-
-                return resolver
-                    .getType(uri)
-                    ?.let { MimeTypeMap.getSingleton().getExtensionFromMimeType(it) }
-                    ?.takeIf { it.matches(Regex("[a-zA-Z0-9]{1,8}")) }
-                    ?: "bin"
-            }
-
-            fun originalFilename(uri: Uri): String {
-                val name =
-                    when (uri.scheme) {
-                        "file" -> uri.path?.let { File(it).name }
-
-                        "content" ->
-                            resolver
-                                .query(
-                                    uri,
-                                    arrayOf(OpenableColumns.DISPLAY_NAME),
-                                    null,
-                                    null,
-                                    null,
-                                )?.use { cursor ->
-                                    if (cursor.moveToFirst()) {
-                                        cursor.getString(0)
-                                    } else {
-                                        null
-                                    }
-                                }
-
-                        else -> null
-                    }
-
-                return name
-                    ?.takeIf {
-                        it.isNotBlank() &&
-                            it != "." &&
-                            it != ".." &&
-                            '/' !in it &&
-                            '\\' !in it &&
-                            '\u0000' !in it
-                    }
-                    ?: "audio.${extensionOf(uri)}"
-            }
-
-            fun addAudio(
-                source: Uri,
-                path: String,
-            ) {
-                require(usedPaths.add(path)) { "Duplicate backup audio path" }
-                require(audioSources.size < MAX_FILES) { "Too many audio files" }
-                audioSources += BackupAudioSource(source, path)
-            }
-
-            for (sound in library.boards.flatMap { it.sounds }) {
-                val key = sound.type to sound.uri
-                if (key in paths) continue
-
-                val sourceUri = sound.uri.toUri()
-
-                when (sound.type) {
-                    SoundType.FILE -> {
-                        val path =
-                            "audio/${audioSources.size.toString().padStart(5, '0')}.${extensionOf(sourceUri)}"
-
-                        addAudio(sourceUri, path)
-                        audioFiles += BackupFolderFile(path = path, name = originalFilename(sourceUri))
-                        paths[key] = path
-                    }
-
-                    SoundType.FOLDER -> {
-                        val folderPath =
-                            "folders/${folders.size.toString().padStart(5, '0')}"
-
-                        val files = folderResolver.resolve(sourceUri)
-
-                        val manifestFiles =
-                            files.mapIndexed { index, file ->
-                                val path =
-                                    "$folderPath/${index.toString().padStart(
-                                        5,
-                                        '0',
-                                    )}.${extensionOf(file.uri, file.name)}"
-
-                                addAudio(file.uri, path)
-
-                                BackupFolderFile(
-                                    path = path,
-                                    name = file.name,
-                                )
-                            }
-
-                        folders +=
-                            BackupFolder(
-                                folderPath = folderPath,
-                                files = manifestFiles,
-                                name = originalFolderName(sourceUri),
-                            )
-
-                        paths[key] = folderPath
-                    }
-                }
-            }
-
-            val manifest =
-                BackupFolderManifest(
-                    folders = folders,
-                    audioFiles = audioFiles,
-                )
-
-            BackupFolderValidator.validate(
-                manifest = manifest,
-                zipEntries = audioSources.map { it.path }.toSet(),
-                version = VERSION,
+    suspend fun export(
+        destination: Uri,
+        selectedBoardIds: Set<String>? = null,
+    ) = withContext(Dispatchers.IO) {
+        val library =
+            BackupBoardSelector.select(
+                library = repository.snapshot(),
+                selectedBoardIds = selectedBoardIds,
             )
+        val paths = linkedMapOf<Pair<SoundType, String>, String>()
+        val audioSources = mutableListOf<BackupAudioSource>()
+        val folders = mutableListOf<BackupFolder>()
+        val usedPaths = mutableSetOf<String>()
+        val audioFiles = mutableListOf<BackupFolderFile>()
 
-            val portable =
-                library.copy(
-                    boards =
-                        library.boards.map { board ->
-                            board.copy(
-                                sounds =
-                                    board.sounds.map { sound ->
-                                        sound.copy(uri = paths.getValue(sound.type to sound.uri))
-                                    },
-                            )
-                        },
-                )
+        fun extensionOf(
+            uri: Uri,
+            originalName: String? = null,
+        ): String {
+            val extensionFromName =
+                originalName
+                    ?.substringAfterLast('.', "")
+                    ?.takeIf { it.matches(Regex("[a-zA-Z0-9]{1,8}")) }
 
-            val config =
-                json
-                    .encodeToString(
-                        FullBackupEnvelope.serializer(),
-                        FullBackupEnvelope(
-                            format = FORMAT,
-                            version = VERSION,
-                            library = portable,
-                            folderManifest = manifest,
-                        ),
-                    ).toByteArray(Charsets.UTF_8)
+            val extensionFromUri =
+                uri.lastPathSegment
+                    ?.substringAfterLast('.', "")
+                    ?.takeIf { it.matches(Regex("[a-zA-Z0-9]{1,8}")) }
 
-            require(config.size <= MAX_CONFIG_BYTES) {
-                "Configuration is too large"
-            }
+            if (extensionFromName != null) return extensionFromName
+            if (extensionFromUri != null) return extensionFromUri
 
-            resolver.openOutputStream(destination, "wt")?.use { output ->
-                ZipOutputStream(output).use { zip ->
-                    zip.putNextEntry(ZipEntry(CONFIG_ENTRY))
-                    zip.write(config)
-                    zip.closeEntry()
+            return resolver
+                .getType(uri)
+                ?.let { MimeTypeMap.getSingleton().getExtensionFromMimeType(it) }
+                ?.takeIf { it.matches(Regex("[a-zA-Z0-9]{1,8}")) }
+                ?: "bin"
+        }
 
-                    var total = 0L
+        fun originalFilename(uri: Uri): String {
+            val name =
+                when (uri.scheme) {
+                    "file" -> uri.path?.let { File(it).name }
 
-                    for ((source, path) in audioSources) {
-                        zip.putNextEntry(ZipEntry(path))
-
-                        val input =
-                            resolver.openInputStream(source)
-                                ?: error("Cannot read audio: $source")
-
-                        input.use { stream ->
-                            val buffer = ByteArray(64 * 1024)
-
-                            while (true) {
-                                val n = stream.read(buffer)
-                                if (n < 0) break
-
-                                total += n
-                                require(total <= MAX_AUDIO_BYTES) {
-                                    "Backup exceeds audio size limit"
+                    "content" ->
+                        resolver
+                            .query(
+                                uri,
+                                arrayOf(OpenableColumns.DISPLAY_NAME),
+                                null,
+                                null,
+                                null,
+                            )?.use { cursor ->
+                                if (cursor.moveToFirst()) {
+                                    cursor.getString(0)
+                                } else {
+                                    null
                                 }
-
-                                zip.write(buffer, 0, n)
                             }
+
+                    else -> null
+                }
+
+            return name
+                ?.takeIf {
+                    it.isNotBlank() &&
+                        it != "." &&
+                        it != ".." &&
+                        '/' !in it &&
+                        '\\' !in it &&
+                        '\u0000' !in it
+                }
+                ?: "audio.${extensionOf(uri)}"
+        }
+
+        fun addAudio(
+            source: Uri,
+            path: String,
+        ) {
+            require(usedPaths.add(path)) { "Duplicate backup audio path" }
+            require(audioSources.size < MAX_FILES) { "Too many audio files" }
+            audioSources += BackupAudioSource(source, path)
+        }
+
+        for (sound in library.boards.flatMap { it.sounds }) {
+            val key = sound.type to sound.uri
+            if (key in paths) continue
+
+            val sourceUri = sound.uri.toUri()
+
+            when (sound.type) {
+                SoundType.FILE -> {
+                    val path =
+                        "audio/${audioSources.size.toString().padStart(5, '0')}.${extensionOf(sourceUri)}"
+
+                    addAudio(sourceUri, path)
+                    audioFiles += BackupFolderFile(path = path, name = originalFilename(sourceUri))
+                    paths[key] = path
+                }
+
+                SoundType.FOLDER -> {
+                    val folderPath =
+                        "folders/${folders.size.toString().padStart(5, '0')}"
+
+                    val files = folderResolver.resolve(sourceUri)
+
+                    val manifestFiles =
+                        files.mapIndexed { index, file ->
+                            val path =
+                                "$folderPath/${index.toString().padStart(
+                                    5,
+                                    '0',
+                                )}.${extensionOf(file.uri, file.name)}"
+
+                            addAudio(file.uri, path)
+
+                            BackupFolderFile(
+                                path = path,
+                                name = file.name,
+                            )
                         }
 
-                        zip.closeEntry()
-                    }
+                    folders +=
+                        BackupFolder(
+                            folderPath = folderPath,
+                            files = manifestFiles,
+                            name = originalFolderName(sourceUri),
+                        )
+
+                    paths[key] = folderPath
                 }
-            } ?: error("Cannot create backup")
+            }
         }
+
+        val manifest =
+            BackupFolderManifest(
+                folders = folders,
+                audioFiles = audioFiles,
+            )
+
+        BackupFolderValidator.validate(
+            manifest = manifest,
+            zipEntries = audioSources.map { it.path }.toSet(),
+            version = VERSION,
+        )
+
+        val portable =
+            library.copy(
+                boards =
+                    library.boards.map { board ->
+                        board.copy(
+                            sounds =
+                                board.sounds.map { sound ->
+                                    sound.copy(uri = paths.getValue(sound.type to sound.uri))
+                                },
+                        )
+                    },
+            )
+
+        val config =
+            json
+                .encodeToString(
+                    FullBackupEnvelope.serializer(),
+                    FullBackupEnvelope(
+                        format = FORMAT,
+                        version = VERSION,
+                        library = portable,
+                        folderManifest = manifest,
+                    ),
+                ).toByteArray(Charsets.UTF_8)
+
+        require(config.size <= MAX_CONFIG_BYTES) {
+            "Configuration is too large"
+        }
+
+        resolver.openOutputStream(destination, "wt")?.use { output ->
+            ZipOutputStream(output).use { zip ->
+                zip.putNextEntry(ZipEntry(CONFIG_ENTRY))
+                zip.write(config)
+                zip.closeEntry()
+
+                var total = 0L
+
+                for ((source, path) in audioSources) {
+                    zip.putNextEntry(ZipEntry(path))
+
+                    val input =
+                        resolver.openInputStream(source)
+                            ?: error("Cannot read audio: $source")
+
+                    input.use { stream ->
+                        val buffer = ByteArray(64 * 1024)
+
+                        while (true) {
+                            val n = stream.read(buffer)
+                            if (n < 0) break
+
+                            total += n
+                            require(total <= MAX_AUDIO_BYTES) {
+                                "Backup exceeds audio size limit"
+                            }
+
+                            zip.write(buffer, 0, n)
+                        }
+                    }
+
+                    zip.closeEntry()
+                }
+            }
+        } ?: error("Cannot create backup")
+    }
 
     suspend fun inspect(source: Uri): FullBackupPreview =
         withContext(Dispatchers.IO) {
@@ -559,178 +566,302 @@ class FullBackup(
                 scan.library.boards.sumOf { it.sounds.size },
                 scan.audioCount,
                 scan.audioBytes,
+                scan.library.boards,
             )
         }
 
     /** Validate and extract to a private staging directory, then switch the DataStore. */
-    suspend fun restore(
+    internal suspend fun restore(
         preview: FullBackupPreview,
         externalFolderUri: Uri? = null,
+        selectedBoardIds: Set<String> = preview.boards.map { it.id }.toSet(),
+        mode: BoardImportMerger.Mode = BoardImportMerger.Mode.REPLACE,
     ) = withContext(Dispatchers.IO) {
-        val externalFolder = externalFolderUri?.let(::requireExternalFolder)
-        val createdExternalFiles = mutableListOf<DocumentFile>()
-        val createdExternalFolders = mutableListOf<DocumentFile>()
-        val externalAudioUris = mutableMapOf<String, Uri>()
-        val externalFolderUris = mutableMapOf<String, Uri>()
-        val root = File(context.filesDir, "backup-audio").apply { mkdirs() }
-        val stage = File(root, "stage-${UUID.randomUUID()}")
-        val destination = File(root, "import-${UUID.randomUUID()}")
-        require(stage.mkdirs()) { "Cannot create staging directory" }
-        var committed = false
-        try {
-            val scan = scan(preview.source, stage)
-            require(scan.audioCount == preview.audioCount && scan.audioBytes == preview.audioBytes) {
-                "Backup changed since preview"
-            }
-
-            scan.folderManifest?.let { manifest ->
-                restoreFolderNames(stage, manifest)
-            }
-            if (externalFolder != null) {
-                val audioPaths =
+        repository.withAudioMutationLock {
+            val externalFolder = externalFolderUri?.let(::requireExternalFolder)
+            val createdExternalFiles = mutableListOf<DocumentFile>()
+            val createdExternalFolders = mutableListOf<DocumentFile>()
+            val externalAudioUris = mutableMapOf<String, Uri>()
+            val externalFolderUris = mutableMapOf<String, Uri>()
+            val root = File(context.filesDir, "backup-audio").apply { mkdirs() }
+            val stage = File(root, "stage-${UUID.randomUUID()}")
+            val destination = File(root, "import-${UUID.randomUUID()}")
+            require(stage.mkdirs()) { "Cannot create staging directory" }
+            var committed = false
+            try {
+                val scan = scan(preview.source, stage)
+                require(
                     scan.library.boards
-                        .flatMap { it.sounds }
-                        .filter { it.type == SoundType.FILE }
-                        .map { it.uri }
-                        .distinct()
-
-                for (zipPath in audioPaths) {
-                    val source = File(stage, zipPath.removePrefix("audio/"))
-                    val filename = importedAudioFilename(zipPath, scan.folderManifest)
-
-                    externalAudioUris[zipPath] =
-                        storeExternalAudio(
-                            source = source,
-                            directory = externalFolder,
-                            originalFilename = filename,
-                            createdFiles = createdExternalFiles,
-                        )
+                        .map { it.id }
+                        .toSet() ==
+                        preview.boards.map { it.id }.toSet(),
+                ) {
+                    "Backup board configuration changed since preview"
                 }
-                val folderPaths =
-                    scan.library.boards
-                        .flatMap { it.sounds }
-                        .filter { it.type == SoundType.FOLDER }
-                        .map { it.uri }
-                        .distinct()
+                val selectedBoards =
+                    scan.library.boards.filter { it.id in selectedBoardIds }
 
-                for (folderPath in folderPaths) {
-                    val preferredName =
-                        scan.folderManifest
-                            ?.folders
-                            ?.firstOrNull { it.folderPath == folderPath }
-                            ?.name
-                            ?: folderPath.substringAfterLast('/')
+                require(selectedBoards.isNotEmpty() && selectedBoards.size == selectedBoardIds.size) {
+                    "Invalid board selection for ZIP import"
+                }
+                require(scan.audioCount == preview.audioCount && scan.audioBytes == preview.audioBytes) {
+                    "Backup changed since preview"
+                }
 
-                    val targetFolder =
-                        createExternalFolder(
-                            parent = externalFolder,
-                            preferredName = preferredName,
-                            createdFolders = createdExternalFolders,
-                        )
+                scan.folderManifest?.let { manifest ->
+                    restoreFolderNames(stage, manifest)
+                }
 
-                    externalFolderUris[folderPath] =
-                        folderUriWithinTree(
-                            selectedTreeUri = externalFolderUri,
-                            folder = targetFolder,
-                        )
-                    val sourceFolder = File(stage, folderPath)
-                    require(sourceFolder.isDirectory) {
-                        "Missing staged audio folder: $folderPath"
+                retainSelectedAudio(
+                    stage = stage,
+                    library = scan.library,
+                    selectedBoardIds = selectedBoardIds,
+                )
+
+                if (externalFolder != null) {
+                    val audioPaths =
+                        selectedBoards
+                            .flatMap { it.sounds }
+                            .filter { it.type == SoundType.FILE }
+                            .map { it.uri }
+                            .distinct()
+
+                    for (zipPath in audioPaths) {
+                        val source = File(stage, zipPath.removePrefix("audio/"))
+                        val filename = importedAudioFilename(zipPath, scan.folderManifest)
+
+                        externalAudioUris[zipPath] =
+                            storeExternalAudio(
+                                source = source,
+                                directory = externalFolder,
+                                originalFilename = filename,
+                                createdFiles = createdExternalFiles,
+                            )
                     }
+                    val folderPaths =
+                        selectedBoards
+                            .flatMap { it.sounds }
+                            .filter { it.type == SoundType.FOLDER }
+                            .map { it.uri }
+                            .distinct()
 
-                    val sourceFiles =
-                        sourceFolder.listFiles()
-                            ?: error("Cannot list staged audio folder: $folderPath")
+                    for (folderPath in folderPaths) {
+                        val preferredName =
+                            scan.folderManifest
+                                ?.folders
+                                ?.firstOrNull { it.folderPath == folderPath }
+                                ?.name
+                                ?: folderPath.substringAfterLast('/')
 
-                    for (sourceFile in sourceFiles) {
-                        require(sourceFile.isFile) {
-                            "Unexpected entry in staged audio folder: ${sourceFile.name}"
+                        val targetFolder =
+                            createExternalFolder(
+                                parent = externalFolder,
+                                preferredName = preferredName,
+                                createdFolders = createdExternalFolders,
+                            )
+
+                        externalFolderUris[folderPath] =
+                            folderUriWithinTree(
+                                selectedTreeUri = externalFolderUri,
+                                folder = targetFolder,
+                            )
+                        val sourceFolder = File(stage, folderPath)
+                        require(sourceFolder.isDirectory) {
+                            "Missing staged audio folder: $folderPath"
                         }
 
-                        storeExternalAudio(
-                            source = sourceFile,
-                            directory = targetFolder,
-                            originalFilename = sourceFile.name,
-                            createdFiles = createdExternalFiles,
-                        )
+                        val sourceFiles =
+                            sourceFolder.listFiles()
+                                ?: error("Cannot list staged audio folder: $folderPath")
+
+                        for (sourceFile in sourceFiles) {
+                            require(sourceFile.isFile) {
+                                "Unexpected entry in staged audio folder: ${sourceFile.name}"
+                            }
+
+                            storeExternalAudio(
+                                source = sourceFile,
+                                directory = targetFolder,
+                                originalFilename = sourceFile.name,
+                                createdFiles = createdExternalFiles,
+                            )
+                        }
+                    }
+                }
+
+                if (externalFolder == null) {
+                    require(stage.renameTo(destination)) { "Cannot finalize imported audio" }
+                }
+                val restored =
+                    scan.library.copy(
+                        boards =
+                            selectedBoards.map { board ->
+                                board.copy(
+                                    sounds =
+                                        board.sounds.map { sound ->
+                                            val restoredUri =
+                                                if (externalFolder != null) {
+                                                    when (sound.type) {
+                                                        SoundType.FILE ->
+                                                            requireNotNull(externalAudioUris[sound.uri]) {
+                                                                "Missing external audio URI: ${sound.uri}"
+                                                            }
+
+                                                        SoundType.FOLDER ->
+                                                            requireNotNull(externalFolderUris[sound.uri]) {
+                                                                "Missing external folder URI: ${sound.uri}"
+                                                            }
+                                                    }
+                                                } else {
+                                                    val target =
+                                                        when (sound.type) {
+                                                            SoundType.FILE ->
+                                                                File(destination, sound.uri.removePrefix("audio/"))
+
+                                                            SoundType.FOLDER ->
+                                                                File(destination, sound.uri)
+                                                        }
+
+                                                    Uri.fromFile(target)
+                                                }
+
+                                            sound.copy(uri = restoredUri.toString())
+                                        },
+                                )
+                            },
+                    )
+                val previous = repository.snapshot()
+                val recovery = File(context.filesDir, "soundboard-before-import.json")
+                val tmp = File(context.filesDir, "soundboard-before-import.json.tmp")
+                try {
+                    tmp.writeText(
+                        json.encodeToString(
+                            ConfigurationRecoveryEnvelope.serializer(),
+                            ConfigurationRecoveryEnvelope("dev.co508.soundboard.configuration", 1, previous),
+                        ),
+                    )
+                    require(tmp.renameTo(recovery)) { "Cannot save recovery configuration" }
+                } finally {
+                    tmp.delete()
+                }
+                repository.importBoards(
+                    imported = restored,
+                    selectedBoardIds = selectedBoardIds,
+                    mode = mode,
+                )
+                committed = true
+                repository.cleanUnreferencedAudio()
+            } catch (e: Exception) {
+                if (!committed &&
+                    (createdExternalFiles.isNotEmpty() || createdExternalFolders.isNotEmpty())
+                ) {
+                    try {
+                        val currentLibrary = repository.snapshot()
+                        val canRollbackExternalAudio =
+                            ImportRollbackPolicy.canRollback(
+                                currentLibrary.boards
+                                    .flatMap { board -> board.sounds }
+                                    .map { sound -> sound.uri },
+                            )
+
+                        if (canRollbackExternalAudio) {
+                            rollbackExternalAudio(
+                                createdFiles = createdExternalFiles,
+                                createdFolders = createdExternalFolders,
+                            )
+                        }
+                    } catch (rollbackError: Exception) {
+                        e.addSuppressed(rollbackError)
+                    }
+                }
+                throw e
+            } finally {
+                runCatching {
+                    stage.deleteRecursively()
+                }
+
+                if (!committed && destination.exists()) {
+                    runCatching {
+                        val currentLibrary = repository.snapshot()
+                        val destinationPath = destination.canonicalFile.toPath()
+
+                        val isReferenced =
+                            currentLibrary.boards
+                                .flatMap { it.sounds }
+                                .any { sound ->
+                                    val uri = Uri.parse(sound.uri)
+
+                                    if (uri.scheme != "file") {
+                                        false
+                                    } else {
+                                        val path =
+                                            File(requireNotNull(uri.path))
+                                                .canonicalFile
+                                                .toPath()
+
+                                        path.startsWith(destinationPath) ||
+                                            destinationPath.startsWith(path)
+                                    }
+                                }
+
+                        if (!isReferenced) {
+                            destination.deleteRecursively()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun retainSelectedAudio(
+        stage: File,
+        library: SoundLibrary,
+        selectedBoardIds: Set<String>,
+    ) {
+        val selectedBoards = library.boards.filter { it.id in selectedBoardIds }
+
+        require(selectedBoards.isNotEmpty()) {
+            "No boards selected for import"
+        }
+        require(selectedBoards.size == selectedBoardIds.size) {
+            "Unknown board selected for import"
+        }
+
+        val retainedFiles =
+            selectedBoards
+                .flatMap { it.sounds }
+                .filter { it.type == SoundType.FILE }
+                .map { it.uri.removePrefix("audio/") }
+                .toSet()
+
+        val retainedFolders =
+            selectedBoards
+                .flatMap { it.sounds }
+                .filter { it.type == SoundType.FOLDER }
+                .map { it.uri }
+                .toSet()
+
+        stage
+            .listFiles()
+            ?.filter { it.isFile }
+            ?.forEach { file ->
+                if (file.name !in retainedFiles) {
+                    require(file.delete()) {
+                        "Cannot remove unselected staged audio: ${file.name}"
                     }
                 }
             }
 
-            if (externalFolder == null) {
-                require(stage.renameTo(destination)) { "Cannot finalize imported audio" }
-            }
-            val restored =
-                scan.library.copy(
-                    boards =
-                        scan.library.boards.map { board ->
-                            board.copy(
-                                sounds =
-                                    board.sounds.map { sound ->
-                                        val restoredUri =
-                                            if (externalFolder != null) {
-                                                when (sound.type) {
-                                                    SoundType.FILE ->
-                                                        requireNotNull(externalAudioUris[sound.uri]) {
-                                                            "Missing external audio URI: ${sound.uri}"
-                                                        }
-
-                                                    SoundType.FOLDER ->
-                                                        requireNotNull(externalFolderUris[sound.uri]) {
-                                                            "Missing external folder URI: ${sound.uri}"
-                                                        }
-                                                }
-                                            } else {
-                                                val target =
-                                                    when (sound.type) {
-                                                        SoundType.FILE ->
-                                                            File(destination, sound.uri.removePrefix("audio/"))
-
-                                                        SoundType.FOLDER ->
-                                                            File(destination, sound.uri)
-                                                    }
-
-                                                Uri.fromFile(target)
-                                            }
-
-                                        sound.copy(uri = restoredUri.toString())
-                                    },
-                            )
-                        },
-                )
-            val previous = repository.snapshot()
-            val recovery = File(context.filesDir, "soundboard-before-import.json")
-            val tmp = File(context.filesDir, "soundboard-before-import.json.tmp")
-            try {
-                tmp.writeText(
-                    json.encodeToString(
-                        ConfigurationRecoveryEnvelope.serializer(),
-                        ConfigurationRecoveryEnvelope("dev.co508.soundboard.configuration", 1, previous),
-                    ),
-                )
-                require(tmp.renameTo(recovery)) { "Cannot save recovery configuration" }
-            } finally {
-                tmp.delete()
-            }
-            repository.restore(restored)
-            committed = true
-        } catch (e: Exception) {
-            if (!committed &&
-                (createdExternalFiles.isNotEmpty() || createdExternalFolders.isNotEmpty())
-            ) {
-                try {
-                    rollbackExternalAudio(
-                        createdFiles = createdExternalFiles,
-                        createdFolders = createdExternalFolders,
-                    )
-                } catch (rollbackError: Exception) {
-                    e.addSuppressed(rollbackError)
+        val folderDirectory = File(stage, "folders")
+        if (folderDirectory.isDirectory) {
+            folderDirectory.listFiles()?.forEach { folder ->
+                val relativePath = "folders/${folder.name}"
+                if (relativePath !in retainedFolders) {
+                    require(folder.deleteRecursively()) {
+                        "Cannot remove unselected staged folder: ${folder.name}"
+                    }
                 }
             }
-            throw e
-        } finally {
-            stage.deleteRecursively()
-            if (!committed) destination.deleteRecursively()
         }
     }
 
@@ -946,6 +1077,9 @@ class FullBackup(
                 ?: emptySet()
 
         val refs = library.boards.flatMap { it.sounds }
+        require(refs.map { it.id }.distinct().size == refs.size) {
+            "Duplicate sound IDs across boards in ZIP backup"
+        }
         require(
             refs.all {
                 it.id.isNotBlank() &&
