@@ -184,8 +184,12 @@ Before each commit, merge, or release:
 - Perform device testing where required.
 - Review the Git diff and confirm no secrets are staged.
 
-Feature branches are integrated into `develop` through pull requests.
-Use regular merge commits where required by the established workflow.
+Feature and bugfix branches are integrated into `develop` through pull
+requests using **Squash and merge**. The squash commit subject must be a
+Conventional Commit, without repeating the same message in the commit body.
+
+Merges from `develop` into `main` and Release Please PRs targeting
+`main` use regular merge commits.
 
 Follow [project-runbook.md](project-runbook.md) for release-specific
 steps, version synchronization, Release Please, and APK publication.

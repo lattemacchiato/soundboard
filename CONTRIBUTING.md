@@ -32,7 +32,7 @@ ran.
 Use the PR template. Include what changed, why, and how it was validated.
 
 **Title your PR as a Conventional Commit.** PRs are squash-merged, so the title
-becomes the commit subject on `main`, and release-please reads those subjects to
+becomes the commit subject on `develop`, and release-please reads those subjects to
 decide the next version and write the changelog. A title it cannot parse costs a
 changelog entry, so CI checks the shape:
 
@@ -42,6 +42,14 @@ fix(audio): keep focus when a call interrupts    -> patch version bump
 feat!: drop support for Android 8                -> breaking change
 chore(deps): bump media3 to 1.11.0               -> no release on its own
 ```
+
+Feature and bugfix PRs targeting `develop` must use **Squash and merge**.
+Use the Conventional Commit PR title as the squash commit subject. Do not
+repeat the same `feat:` or `fix:` message in the squash commit body,
+as this can cause duplicate Release Please changelog entries.
+
+PRs merging `develop` into `main` and Release Please PRs targeting
+`main` use regular merge commits.
 
 `feat`, `fix`, `perf`, `revert`, `refactor`, `docs`, `test`, `build`, `ci`,
 `chore`, and `style` are accepted. `docs/deployment.md` explains what each one
