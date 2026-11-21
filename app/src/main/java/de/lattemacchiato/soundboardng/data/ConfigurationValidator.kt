@@ -22,6 +22,15 @@ internal object ConfigurationValidator {
             "Active board not found"
         }
 
+        val allSoundIds =
+            library.boards.flatMap { board ->
+                board.sounds.map { it.id }
+            }
+
+        require(allSoundIds.distinct().size == allSoundIds.size) {
+            "Duplicate sound IDs across boards"
+        }
+
         // Validate global settings
         require(
             library.defaultFadeInMs in 0..5000 &&

@@ -41,4 +41,80 @@ class ConfigurationValidatorTest {
             ConfigurationValidator.validate(libraryWithUri(""))
         }
     }
+
+    @Test
+    fun duplicateSoundIdsAcrossBoardsAreRejected() {
+        val library =
+            SoundLibrary(
+                boards =
+                    listOf(
+                        SoundBoard(
+                            id = "board-a",
+                            name = "Act 1",
+                            sounds =
+                                listOf(
+                                    Sound(
+                                        id = "same-id",
+                                        uri = "content://audio/1",
+                                        name = "Pausengong",
+                                    ),
+                                ),
+                        ),
+                        SoundBoard(
+                            id = "board-b",
+                            name = "Act 2",
+                            sounds =
+                                listOf(
+                                    Sound(
+                                        id = "same-id",
+                                        uri = "content://audio/2",
+                                        name = "Pausengong",
+                                    ),
+                                ),
+                        ),
+                    ),
+                activeBoardId = "board-a",
+            )
+
+        assertThrows(IllegalArgumentException::class.java) {
+            ConfigurationValidator.validate(library)
+        }
+    }
+
+    @Test
+    fun sameAudioUriAcrossBoardsIsAccepted() {
+        val library =
+            SoundLibrary(
+                boards =
+                    listOf(
+                        SoundBoard(
+                            id = "board-a",
+                            name = "Act 1",
+                            sounds =
+                                listOf(
+                                    Sound(
+                                        id = "sound-a",
+                                        uri = "content://audio/pausengong",
+                                        name = "Pausengong",
+                                    ),
+                                ),
+                        ),
+                        SoundBoard(
+                            id = "board-b",
+                            name = "Act 2",
+                            sounds =
+                                listOf(
+                                    Sound(
+                                        id = "sound-b",
+                                        uri = "content://audio/pausengong",
+                                        name = "Pausengong",
+                                    ),
+                                ),
+                        ),
+                    ),
+                activeBoardId = "board-a",
+            )
+
+        ConfigurationValidator.validate(library)
+    }
 }
