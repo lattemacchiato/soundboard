@@ -3,6 +3,7 @@ package de.lattemacchiato.soundboardng.data
 import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
+import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -18,16 +19,22 @@ private data class ConfigurationEnvelope(
     val library: SoundLibrary,
 )
 
+data class UnavailableAudioReference(
+    val boardId: String,
+    val boardName: String,
+    val soundName: String,
+)
+
 data class BackupPreview(
     val library: SoundLibrary,
-    val unavailableSounds: List<String>,
+    val unavailableSounds: List<UnavailableAudioReference>,
 ) {
     val boardCount: Int get() = library.boards.size
     val soundCount: Int get() = library.boards.sumOf { it.sounds.size }
 }
 
 /** JSON-only portable envelope. Audio is intentionally not included in this format. */
-class ConfigurationBackup(
+internal class ConfigurationBackup(
     private val context: Context,
     private val repository: SoundRepository,
 ) {
@@ -38,17 +45,33 @@ class ConfigurationBackup(
         }
     private val resolver: ContentResolver get() = context.contentResolver
 
-    suspend fun export(destination: Uri) =
-        withContext(Dispatchers.IO) {
-            val payload =
-                json.encodeToString(
-                    ConfigurationEnvelope.serializer(),
-                    ConfigurationEnvelope(FORMAT, VERSION, repository.snapshot()),
-                )
-            require(payload.toByteArray().size <= MAX_BYTES) { "Configuration exceeds size limit" }
-            resolver.openOutputStream(destination, "wt")?.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
-                ?: error("Cannot open export destination")
+    suspend fun export(
+        destination: Uri,
+        selectedBoardIds: Set<String>? = null,
+    ) = withContext(Dispatchers.IO) {
+        val exportedLibrary =
+            BackupBoardSelector.select(
+                library = repository.snapshot(),
+                selectedBoardIds = selectedBoardIds,
+            )
+
+        ConfigurationValidator.validate(exportedLibrary)
+
+        val payload =
+            json.encodeToString(
+                ConfigurationEnvelope.serializer(),
+                ConfigurationEnvelope(FORMAT, VERSION, exportedLibrary),
+            )
+
+        val bytes = payload.toByteArray(Charsets.UTF_8)
+        require(bytes.size <= MAX_BYTES) {
+            "Configuration exceeds size limit"
         }
+
+        resolver.openOutputStream(destination, "wt")?.use {
+            it.write(bytes)
+        } ?: error("Cannot open export destination")
+    }
 
     suspend fun inspect(source: Uri): BackupPreview =
         withContext(Dispatchers.IO) {
@@ -73,40 +96,91 @@ class ConfigurationBackup(
             require(envelope.format == FORMAT && envelope.version == VERSION) { "Unsupported backup format or version" }
             ConfigurationValidator.validate(envelope.library)
             val missing =
-                envelope.library.boards
-                    .flatMap { it.sounds }
-                    .filter { sound ->
-                        try {
-                            resolver.openFileDescriptor(Uri.parse(sound.uri), "r")?.use { } == null
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (_: Exception) {
-                            true
+                envelope.library.boards.flatMap { board ->
+                    board.sounds.mapNotNull { sound ->
+                        val unavailable =
+                            try {
+                                val uri = Uri.parse(sound.uri)
+
+                                when (sound.type) {
+                                    SoundType.FILE ->
+                                        when (uri.scheme) {
+                                            "file" -> {
+                                                val path = uri.path
+                                                path == null || !File(path).isFile || !File(path).canRead()
+                                            }
+                                            "content" -> resolver.openFileDescriptor(uri, "r")?.use {} == null
+                                            else -> true
+                                        }
+
+                                    SoundType.FOLDER ->
+                                        when (uri.scheme) {
+                                            "file" -> {
+                                                val path = uri.path
+                                                path == null || !File(path).isDirectory || !File(path).canRead()
+                                            }
+                                            "content" -> DocumentFile.fromTreeUri(context, uri)?.exists() != true
+                                            else -> true
+                                        }
+                                }
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (_: Exception) {
+                                true
+                            }
+
+                        if (unavailable) {
+                            UnavailableAudioReference(
+                                boardId = board.id,
+                                boardName = board.name,
+                                soundName = sound.name,
+                            )
+                        } else {
+                            null
                         }
-                    }.map { it.name }
+                    }
+                }
             BackupPreview(envelope.library, missing)
         }
 
-    /** Save a private recovery copy before replacing DataStore; retain it after success. */
-    suspend fun restore(preview: BackupPreview) =
-        withContext(Dispatchers.IO) {
-            ConfigurationValidator.validate(preview.library)
+    /**
+     * Saves a private recovery copy before importing selected boards.
+     * JSON imports never delete audio files.
+     */
+    suspend fun restore(
+        preview: BackupPreview,
+        selectedBoardIds: Set<String>,
+        mode: BoardImportMerger.Mode,
+    ) = withContext(Dispatchers.IO) {
+        ConfigurationValidator.validate(preview.library)
+
+        // Validate the selection before creating a recovery backup.
+        BackupBoardSelector.select(
+            library = preview.library,
+            selectedBoardIds = selectedBoardIds,
+        )
+
+        repository.withAudioMutationLock {
             val previous = repository.snapshot()
-            val recovery = File(context.filesDir, "soundboard-before-import.json")
-            val tmp = File(context.filesDir, "soundboard-before-import.json.tmp")
-            try {
-                tmp.writeText(
-                    json.encodeToString(
-                        ConfigurationEnvelope.serializer(),
-                        ConfigurationEnvelope(FORMAT, VERSION, previous),
-                    ),
+
+            val recoveryPayload =
+                json.encodeToString(
+                    ConfigurationEnvelope.serializer(),
+                    ConfigurationEnvelope(FORMAT, VERSION, previous),
                 )
-                if (!tmp.renameTo(recovery)) error("Cannot save pre-import recovery backup")
-                repository.restore(preview.library)
-            } finally {
-                tmp.delete()
-            }
+
+            ConfigurationRecovery.save(
+                context = context,
+                payload = recoveryPayload,
+            )
+
+            repository.importBoards(
+                imported = preview.library,
+                selectedBoardIds = selectedBoardIds,
+                mode = mode,
+            )
         }
+    }
 
     companion object {
         private const val FORMAT = "dev.co508.soundboard.configuration"

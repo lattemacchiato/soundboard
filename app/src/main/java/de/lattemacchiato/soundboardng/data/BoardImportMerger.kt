@@ -3,7 +3,7 @@
 import java.util.UUID
 
 /**
- * Pure configuration merge logic for selective ZIP board imports.
+ * Pure configuration merge logic for selective ZIP and JSON board imports
  *
  * Audio URIs must already be resolved before merging.
  */

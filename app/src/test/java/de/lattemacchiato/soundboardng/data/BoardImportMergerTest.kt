@@ -399,4 +399,39 @@ class BoardImportMergerTest {
             result.boards.map { it.name },
         )
     }
+
+    @Test
+    fun replaceMultipleSelectedBoardsPreservesOrderAndImportedSettings() {
+        val existing =
+            SoundLibrary(
+                boards = listOf(SoundBoard(id = "existing", name = "Existing")),
+                activeBoardId = "existing",
+                defaultFadeInMs = 100,
+            )
+        val imported =
+            SoundLibrary(
+                boards =
+                    listOf(
+                        SoundBoard(id = "a", name = "Music"),
+                        SoundBoard(id = "b", name = "Effects"),
+                        SoundBoard(id = "c", name = "Dialog"),
+                    ),
+                activeBoardId = "b",
+                defaultFadeInMs = 1800,
+            )
+
+        val result =
+            BoardImportMerger.merge(
+                existing = existing,
+                imported = imported,
+                selectedBoardIds = setOf("c", "a"),
+                mode = BoardImportMerger.Mode.REPLACE,
+            )
+
+        assertEquals(listOf("a", "c"), result.boards.map { it.id })
+        assertEquals(listOf("Music", "Dialog"), result.boards.map { it.name })
+        assertEquals("a", result.activeBoardId)
+        assertEquals(1800, result.defaultFadeInMs)
+        assertTrue(result.boards.none { it.id == "existing" })
+    }
 }
