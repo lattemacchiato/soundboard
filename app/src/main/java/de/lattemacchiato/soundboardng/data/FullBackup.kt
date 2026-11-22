@@ -731,19 +731,20 @@ class FullBackup(
                             },
                     )
                 val previous = repository.snapshot()
-                val recovery = File(context.filesDir, "soundboard-before-import.json")
-                val tmp = File(context.filesDir, "soundboard-before-import.json.tmp")
-                try {
-                    tmp.writeText(
-                        json.encodeToString(
-                            ConfigurationRecoveryEnvelope.serializer(),
-                            ConfigurationRecoveryEnvelope("dev.co508.soundboard.configuration", 1, previous),
+                val recoveryPayload =
+                    json.encodeToString(
+                        ConfigurationRecoveryEnvelope.serializer(),
+                        ConfigurationRecoveryEnvelope(
+                            "dev.co508.soundboard.configuration",
+                            1,
+                            previous,
                         ),
                     )
-                    require(tmp.renameTo(recovery)) { "Cannot save recovery configuration" }
-                } finally {
-                    tmp.delete()
-                }
+
+                ConfigurationRecovery.save(
+                    context = context,
+                    payload = recoveryPayload,
+                )
                 repository.importBoards(
                     imported = restored,
                     selectedBoardIds = selectedBoardIds,

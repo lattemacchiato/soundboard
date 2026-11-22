@@ -6,14 +6,18 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -49,6 +53,11 @@ import de.lattemacchiato.soundboardng.data.FullBackupPreview
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+private enum class ExportFormat {
+    ZIP,
+    JSON,
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BackupRestoreScreen(onBack: () -> Unit) {
@@ -59,10 +68,20 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
     val locked by app.lockSettings.locked.collectAsState()
     val boards by app.repository.boards.collectAsState(initial = emptyList())
     var showExportBoardDialog by remember { mutableStateOf(false) }
+    var exportFormat by remember { mutableStateOf(ExportFormat.ZIP) }
     var selectedExportBoardIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var pendingExportBoardIds by remember { mutableStateOf<Set<String>?>(null) }
     var busy by remember { mutableStateOf(false) }
     var preview by remember { mutableStateOf<BackupPreview?>(null) }
+    var selectedJsonImportBoardIds by remember {
+        mutableStateOf<Set<String>>(emptySet())
+    }
+    var jsonImportMode by remember {
+        mutableStateOf(BoardImportMerger.Mode.ADD)
+    }
+    var showJsonReplaceConfirmation by remember {
+        mutableStateOf(false)
+    }
     var fullPreview by remember { mutableStateOf<FullBackupPreview?>(null) }
     var selectedImportBoardIds by remember {
         mutableStateOf<Set<String>>(emptySet())
@@ -166,11 +185,17 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
 
     val export =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+            val boardIds = pendingExportBoardIds
+            pendingExportBoardIds = null
+
             if (uri != null && !locked) {
                 scope.launch {
                     busy = true
                     try {
-                        backup.export(uri)
+                        backup.export(
+                            destination = uri,
+                            selectedBoardIds = boardIds,
+                        )
                         message = "Configuration exported successfully."
                     } catch (
                         e: Exception,
@@ -188,7 +213,16 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                 scope.launch {
                     busy = true
                     try {
-                        preview = backup.inspect(uri)
+                        val candidate = backup.inspect(uri)
+
+                        selectedJsonImportBoardIds =
+                            candidate.library.boards
+                                .map { it.id }
+                                .toSet()
+                        jsonImportMode = BoardImportMerger.Mode.ADD
+                        showJsonReplaceConfirmation = false
+
+                        preview = candidate
                     } catch (
                         e: Exception,
                     ) {
@@ -202,13 +236,16 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
 
     val exportZip =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+            val boardIds = pendingExportBoardIds
+            pendingExportBoardIds = null
+
             if (uri != null && !locked) {
                 scope.launch {
                     busy = true
                     try {
                         fullBackup.export(
                             destination = uri,
-                            selectedBoardIds = pendingExportBoardIds,
+                            selectedBoardIds = boardIds,
                         )
                         message = "Full backup exported successfully."
                     } catch (
@@ -257,50 +294,70 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(
-                "Export configuration",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text("Save all boards, sound settings and global preferences as JSON. Audio files are not included.")
-            Button(enabled = !locked && !busy, onClick = { export.launch("soundboard-configuration.json") }) {
-                Text("Export JSON")
-            }
-            HorizontalDivider()
-            Text(
-                "Import configuration",
+                "Boards including audio files & folders",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
             )
             Text(
-                "Replace the current configuration from a JSON backup. Audio file references must still be accessible on this device.",
+                "Export or import selected boards with their settings and audio files. " +
+                    "ZIP backups can also be transferred to another device.",
             )
-            OutlinedButton(enabled = !locked && !busy, onClick = {
-                import.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
-            }) {
-                Text("Choose JSON backup…")
-            }
-            HorizontalDivider()
-            Text(
-                "Full backup (ZIP)",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text("Includes all boards, settings and audio files. Suitable for transferring to another device.")
-            Button(enabled = !locked && !busy, onClick = { exportZip.launch("soundboard-full-backup.zip") }) {
-                Text("Export full ZIP")
-            }
-            OutlinedButton(
+            Button(
                 enabled = !locked && !busy && boards.isNotEmpty(),
                 onClick = {
+                    exportFormat = ExportFormat.ZIP
                     selectedExportBoardIds = boards.map { it.id }.toSet()
                     showExportBoardDialog = true
                 },
             ) {
-                Text("Export selected boards")
+                Icon(Icons.Default.Upload, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Export boards")
             }
-            OutlinedButton(enabled = !locked && !busy, onClick = {
-                importZip.launch(arrayOf("application/zip", "application/octet-stream"))
-            }) { Text("Import ZIP") }
+            OutlinedButton(
+                enabled = !locked && !busy,
+                onClick = {
+                    importZip.launch(arrayOf("application/zip", "application/octet-stream"))
+                },
+            ) {
+                Icon(Icons.Default.Download, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Import boards")
+            }
+
+            HorizontalDivider()
+
+            Text(
+                "Configuration only",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                "Export or import board configurations and global preferences as JSON, " +
+                    "without audio files. Referenced audio must remain accessible.",
+            )
+            Button(
+                enabled = !locked && !busy,
+                onClick = {
+                    exportFormat = ExportFormat.JSON
+                    selectedExportBoardIds = boards.map { it.id }.toSet()
+                    showExportBoardDialog = true
+                },
+            ) {
+                Icon(Icons.Default.Upload, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Export configuration")
+            }
+            OutlinedButton(
+                enabled = !locked && !busy,
+                onClick = {
+                    import.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
+                },
+            ) {
+                Icon(Icons.Default.Download, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Import configuration")
+            }
             if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
     }
@@ -346,10 +403,22 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                     onClick = {
                         pendingExportBoardIds = selectedExportBoardIds
                         showExportBoardDialog = false
-                        exportZip.launch("soundboard-selected-boards.zip")
+
+                        when (exportFormat) {
+                            ExportFormat.ZIP ->
+                                exportZip.launch("soundboard-boards.zip")
+
+                            ExportFormat.JSON ->
+                                export.launch("soundboard-configuration.json")
+                        }
                     },
                 ) {
-                    Text("Export ZIP")
+                    Text(
+                        when (exportFormat) {
+                            ExportFormat.ZIP -> "Export boards"
+                            ExportFormat.JSON -> "Export configuration"
+                        },
+                    )
                 }
             },
             dismissButton = {
@@ -364,24 +433,106 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
         )
     }
 
-    preview?.let { candidate ->
+    preview?.takeUnless { showJsonReplaceConfirmation }?.let { candidate ->
         AlertDialog(
             onDismissRequest = { if (!busy) preview = null },
-            title = { Text("Replace current configuration?") },
+            title = { Text("Import configuration") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "Backup contains ${candidate.boardCount} board(s) and ${candidate.soundCount} sound(s). All current boards and settings will be replaced.",
+                        "Select the boards to import from this JSON backup. " +
+                            "Audio files are not included.",
+                    )
+                    Text(
+                        "Boards (${selectedJsonImportBoardIds.size} of ${candidate.boardCount} selected):",
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+
+                    Column(
+                        modifier =
+                            Modifier
+                                .heightIn(max = 240.dp)
+                                .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        candidate.library.boards.forEach { board ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Checkbox(
+                                    checked = board.id in selectedJsonImportBoardIds,
+                                    onCheckedChange = { checked ->
+                                        selectedJsonImportBoardIds =
+                                            if (checked) {
+                                                selectedJsonImportBoardIds + board.id
+                                            } else {
+                                                selectedJsonImportBoardIds - board.id
+                                            }
+                                    },
+                                )
+                                Text(board.name)
+                            }
+                        }
+                    }
+                    Text(
+                        "Import mode",
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(
+                            selected = jsonImportMode == BoardImportMerger.Mode.ADD,
+                            onClick = {
+                                jsonImportMode = BoardImportMerger.Mode.ADD
+                            },
+                        )
+                        Text("Add boards")
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(
+                            selected = jsonImportMode == BoardImportMerger.Mode.REPLACE,
+                            onClick = {
+                                jsonImportMode = BoardImportMerger.Mode.REPLACE
+                            },
+                        )
+                        Text("Replace all boards")
+                    }
+
+                    Text(
+                        if (jsonImportMode == BoardImportMerger.Mode.ADD) {
+                            "Selected boards will be added. Existing boards and global settings remain unchanged."
+                        } else {
+                            "All existing boards will be replaced by the selected boards. " +
+                                "Global settings will be restored from the backup."
+                        },
                     )
                     if (candidate.unavailableSounds.isNotEmpty()) {
-                        Text(
-                            "Warning: ${candidate.unavailableSounds.size} audio reference(s) are unavailable on this device. These sounds will not play until relinked.",
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                        Text(
-                            candidate.unavailableSounds.take(5).joinToString(", ") +
-                                if (candidate.unavailableSounds.size > 5) "…" else "",
-                        )
+                        val unavailableSelectedSounds =
+                            candidate.unavailableSounds.filter { reference ->
+                                reference.boardId in selectedJsonImportBoardIds
+                            }
+
+                        if (unavailableSelectedSounds.isNotEmpty()) {
+                            Text(
+                                "Warning: ${unavailableSelectedSounds.size} audio reference(s) " +
+                                    "are unavailable on this device. These sounds will not play " +
+                                    "until relinked.",
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                            Text(
+                                unavailableSelectedSounds
+                                    .take(5)
+                                    .joinToString(", ") { reference ->
+                                        "${reference.boardName}: ${reference.soundName}"
+                                    } +
+                                    if (unavailableSelectedSounds.size > 5) "…" else "",
+                            )
+                        }
                     }
                     Text(
                         "A recovery copy of the previous configuration will be saved in private app storage before importing.",
@@ -389,32 +540,107 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                 }
             },
             confirmButton = {
-                TextButton(enabled = !locked && !busy, onClick = {
-                    scope.launch {
-                        busy = true
-                        try {
-                            app.engine.pauseAll()
-                            app.repository.sounds
-                                .first()
-                                .forEach { app.engine.release(it.id) }
-                            backup.restore(candidate)
-                            preview = null
-                            message = "Configuration imported successfully."
-                        } catch (e: Exception) {
-                            message = "Import failed: ${e.message}"
-                        } finally {
-                            busy = false
+                TextButton(
+                    enabled = !locked && !busy && selectedJsonImportBoardIds.isNotEmpty(),
+                    onClick = {
+                        if (jsonImportMode == BoardImportMerger.Mode.REPLACE) {
+                            showJsonReplaceConfirmation = true
+                        } else {
+                            scope.launch {
+                                busy = true
+                                try {
+                                    backup.restore(
+                                        preview = candidate,
+                                        selectedBoardIds = selectedJsonImportBoardIds,
+                                        mode = BoardImportMerger.Mode.ADD,
+                                    )
+                                    preview = null
+                                    message = "Configuration imported successfully."
+                                } catch (e: Exception) {
+                                    message = "Import failed: ${e.message}"
+                                } finally {
+                                    busy = false
+                                }
+                            }
                         }
-                    }
-                }) { Text("Restore") }
+                    },
+                ) {
+                    Text("Import")
+                }
             },
             dismissButton = { TextButton(enabled = !busy, onClick = { preview = null }) { Text("Cancel") } },
+        )
+    }
+    if (showJsonReplaceConfirmation) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!busy) showJsonReplaceConfirmation = false
+            },
+            title = {
+                Text("Replace all boards?")
+            },
+            text = {
+                Text(
+                    "All existing boards will be replaced by the selected boards " +
+                        "from the JSON backup. Global settings will also be replaced. " +
+                        "This cannot be undone directly, but a recovery copy of the " +
+                        "previous configuration will be saved before importing. " +
+                        "Audio files will not be deleted.",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !locked && !busy,
+                    onClick = {
+                        val candidate = preview
+                        val boardIds = selectedJsonImportBoardIds
+
+                        if (candidate != null && boardIds.isNotEmpty()) {
+                            scope.launch {
+                                busy = true
+                                try {
+                                    app.engine.pauseAll()
+                                    app.repository.sounds
+                                        .first()
+                                        .forEach { app.engine.release(it.id) }
+
+                                    backup.restore(
+                                        preview = candidate,
+                                        selectedBoardIds = boardIds,
+                                        mode = BoardImportMerger.Mode.REPLACE,
+                                    )
+
+                                    preview = null
+                                    showJsonReplaceConfirmation = false
+                                    message = "Configuration replaced successfully."
+                                } catch (e: Exception) {
+                                    message = "Configuration replace failed: ${e.message}"
+                                } finally {
+                                    busy = false
+                                }
+                            }
+                        }
+                    },
+                ) {
+                    Text("Replace")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !busy,
+                    onClick = {
+                        showJsonReplaceConfirmation = false
+                    },
+                ) {
+                    Text("Cancel")
+                }
+            },
         )
     }
     fullPreview?.let { candidate ->
         AlertDialog(
             onDismissRequest = { if (!busy) fullPreview = null },
-            title = { Text("Restore full backup?") },
+            title = { Text("Import boards") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(

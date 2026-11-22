@@ -1,7 +1,7 @@
 ﻿package de.lattemacchiato.soundboardng.data
 
 /**
- * Selects boards for a ZIP backup without modifying the original library.
+ * Selects boards for ZIP and JSON backups without modifying the original library.
  */
 internal object BackupBoardSelector {
     fun select(
