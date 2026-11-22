@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.core.net.toUri
 import androidx.media3.common.C
@@ -25,6 +26,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import de.lattemacchiato.soundboardng.R
 import de.lattemacchiato.soundboardng.data.Sound
 import kotlin.math.roundToLong
 
@@ -127,20 +129,20 @@ fun SoundSegmentDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Playback segment") },
+        title = { Text(stringResource(R.string.sound_playback_segment)) },
         text = {
             Column {
                 when {
-                    loadError -> Text("Unable to load audio file")
-                    durationMs == null -> Text("Loading audio duration...")
+                    loadError -> Text(stringResource(R.string.segment_load_error))
+                    durationMs == null -> Text(stringResource(R.string.segment_loading_duration))
                     else -> {
                         val duration = durationMs!!
                         val effectiveEnd = (endMs ?: duration).coerceIn(0L, duration)
                         val effectiveStart = startMs.coerceIn(0L, duration)
 
-                        Text("Duration: ${formatSegmentTime(duration)}")
+                        Text(stringResource(R.string.segment_duration, formatSegmentTime(duration)))
 
-                        Text("Start: ${formatSegmentTime(startMs)}")
+                        Text(stringResource(R.string.segment_start, formatSegmentTime(startMs)))
                         OutlinedTextField(
                             value = startText,
                             onValueChange = { text ->
@@ -153,7 +155,7 @@ fun SoundSegmentDialog(
                                     startMs = parsed
                                 }
                             },
-                            label = { Text("Start (mm.ss.SSS)") },
+                            label = { Text(stringResource(R.string.segment_start_input)) },
                             singleLine = true,
                             isError =
                                 parseSegmentTime(startText)?.let {
@@ -180,7 +182,10 @@ fun SoundSegmentDialog(
                         )
 
                         Text(
-                            "End: ${endMs?.let(::formatSegmentTime) ?: "End of file"}",
+                            stringResource(
+                                R.string.segment_end,
+                                endMs?.let(::formatSegmentTime) ?: stringResource(R.string.segment_end_of_file),
+                            ),
                         )
                         OutlinedTextField(
                             value = endText,
@@ -198,8 +203,8 @@ fun SoundSegmentDialog(
                                     }
                                 }
                             },
-                            label = { Text("End (mm.ss.SSS)") },
-                            placeholder = { Text("End of file") },
+                            label = { Text(stringResource(R.string.segment_end_input)) },
+                            placeholder = { Text(stringResource(R.string.segment_end_of_file)) },
                             singleLine = true,
                             isError =
                                 endText.isNotBlank() &&
@@ -243,7 +248,7 @@ fun SoundSegmentDialog(
                             },
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Text("Reset to full file")
+                            Text(stringResource(R.string.segment_reset))
                         }
 
                         Button(
@@ -277,7 +282,11 @@ fun SoundSegmentDialog(
                             enabled = previewActive || validSegment,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Text(if (previewActive) "Stop preview" else "Play preview")
+                            Text(
+                                stringResource(
+                                    if (previewActive) R.string.segment_stop_preview else R.string.segment_play_preview,
+                                ),
+                            )
                         }
                     }
                 }
@@ -296,12 +305,12 @@ fun SoundSegmentDialog(
                 },
                 enabled = validSegment,
             ) {
-                Text("Save")
+                Text(stringResource(R.string.rename_save))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         },
     )

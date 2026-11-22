@@ -43,7 +43,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import de.lattemacchiato.soundboardng.R
 import de.lattemacchiato.soundboardng.SoundboardApp
 import de.lattemacchiato.soundboardng.data.BackupPreview
 import de.lattemacchiato.soundboardng.data.BoardImportMerger
@@ -124,9 +126,9 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                 )
 
                 fullPreview = null
-                message = "ZIP import completed successfully."
+                message = app.getString(R.string.backup_zip_import_success)
             } catch (e: Exception) {
-                message = "ZIP import failed: ${e.message}"
+                message = app.getString(R.string.backup_zip_import_error, e.message)
             } finally {
                 busy = false
             }
@@ -147,7 +149,7 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                         uri.scheme == "content" &&
                             uri.authority == "com.android.externalstorage.documents",
                     ) {
-                        "Only local device storage or SD cards are supported for audio import"
+                        app.getString(R.string.backup_local_storage_only)
                     }
                     app.contentResolver.takePersistableUriPermission(
                         uri,
@@ -170,15 +172,15 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                                 mode = pendingExternalImportMode,
                             )
                             fullPreview = null
-                            message = "Full backup restored successfully."
+                            message = app.getString(R.string.backup_restore_success)
                         } catch (e: Exception) {
-                            message = "Full backup restore failed: ${e.message}"
+                            message = app.getString(R.string.backup_restore_error, e.message)
                         } finally {
                             busy = false
                         }
                     }
                 } catch (e: Exception) {
-                    message = "Cannot access selected folder: ${e.message}"
+                    message = app.getString(R.string.backup_folder_error, e.message)
                 }
             }
         }
@@ -196,11 +198,11 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                             destination = uri,
                             selectedBoardIds = boardIds,
                         )
-                        message = "Configuration exported successfully."
+                        message = app.getString(R.string.backup_config_export_success)
                     } catch (
                         e: Exception,
                     ) {
-                        message = "Export failed: ${e.message}"
+                        message = app.getString(R.string.backup_export_error, e.message)
                     } finally {
                         busy = false
                     }
@@ -226,7 +228,7 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                     } catch (
                         e: Exception,
                     ) {
-                        message = "Import failed: ${e.message}"
+                        message = app.getString(R.string.backup_import_error, e.message)
                     } finally {
                         busy = false
                     }
@@ -247,11 +249,11 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                             destination = uri,
                             selectedBoardIds = boardIds,
                         )
-                        message = "Full backup exported successfully."
+                        message = app.getString(R.string.backup_zip_export_success)
                     } catch (
                         e: Exception,
                     ) {
-                        message = "ZIP export failed: ${e.message}"
+                        message = app.getString(R.string.backup_zip_export_error, e.message)
                     } finally {
                         pendingExportBoardIds = null
                         busy = false
@@ -272,7 +274,7 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                     } catch (
                         e: Exception,
                     ) {
-                        message = "ZIP import failed: ${e.message}"
+                        message = app.getString(R.string.backup_zip_import_error, e.message)
                     } finally {
                         busy = false
                     }
@@ -281,8 +283,10 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
         }
 
     Scaffold(topBar = {
-        TopAppBar(title = { Text("Backup & Restore") }, navigationIcon = {
-            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+        TopAppBar(title = { Text(stringResource(R.string.nav_backup_restore)) }, navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.nav_back))
+            }
         })
     }) { padding ->
         Column(
@@ -294,13 +298,12 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(
-                "Boards including audio files & folders",
+                stringResource(R.string.backup_boards_section),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
             )
             Text(
-                "Export or import selected boards with their settings and audio files. " +
-                    "ZIP backups can also be transferred to another device.",
+                stringResource(R.string.backup_boards_description),
             )
             Button(
                 enabled = !locked && !busy && boards.isNotEmpty(),
@@ -312,29 +315,28 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
             ) {
                 Icon(Icons.Default.Upload, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Export boards")
+                Text(stringResource(R.string.backup_export_boards))
             }
             OutlinedButton(
                 enabled = !locked && !busy,
                 onClick = {
-                    importZip.launch(arrayOf("application/zip", "application/octet-stream"))
+                    importZip.launch(arrayOf("application/zip"))
                 },
             ) {
                 Icon(Icons.Default.Download, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Import boards")
+                Text(stringResource(R.string.backup_import_boards))
             }
 
             HorizontalDivider()
 
             Text(
-                "Configuration only",
+                stringResource(R.string.backup_configuration_section),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
             )
             Text(
-                "Export or import board configurations and global preferences as JSON, " +
-                    "without audio files. Referenced audio must remain accessible.",
+                stringResource(R.string.backup_configuration_description),
             )
             Button(
                 enabled = !locked && !busy,
@@ -346,7 +348,7 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
             ) {
                 Icon(Icons.Default.Upload, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Export configuration")
+                Text(stringResource(R.string.backup_export_configuration))
             }
             OutlinedButton(
                 enabled = !locked && !busy,
@@ -356,7 +358,7 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
             ) {
                 Icon(Icons.Default.Download, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Import configuration")
+                Text(stringResource(R.string.backup_import_configuration))
             }
             if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
@@ -367,7 +369,7 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                 showExportBoardDialog = false
             },
             title = {
-                Text("Select boards to export")
+                Text(stringResource(R.string.backup_select_export_boards))
             },
             text = {
                 Column(
@@ -415,8 +417,8 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                 ) {
                     Text(
                         when (exportFormat) {
-                            ExportFormat.ZIP -> "Export boards"
-                            ExportFormat.JSON -> "Export configuration"
+                            ExportFormat.ZIP -> stringResource(R.string.backup_export_boards)
+                            ExportFormat.JSON -> stringResource(R.string.backup_export_configuration)
                         },
                     )
                 }
@@ -427,7 +429,7 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                         showExportBoardDialog = false
                     },
                 ) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             },
         )
@@ -436,15 +438,18 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
     preview?.takeUnless { showJsonReplaceConfirmation }?.let { candidate ->
         AlertDialog(
             onDismissRequest = { if (!busy) preview = null },
-            title = { Text("Import configuration") },
+            title = { Text(stringResource(R.string.backup_import_configuration)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "Select the boards to import from this JSON backup. " +
-                            "Audio files are not included.",
+                        stringResource(R.string.backup_json_import_description),
                     )
                     Text(
-                        "Boards (${selectedJsonImportBoardIds.size} of ${candidate.boardCount} selected):",
+                        stringResource(
+                            R.string.backup_selected_boards,
+                            selectedJsonImportBoardIds.size,
+                            candidate.boardCount,
+                        ),
                         style = MaterialTheme.typography.titleSmall,
                     )
 
@@ -475,7 +480,7 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                         }
                     }
                     Text(
-                        "Import mode",
+                        stringResource(R.string.backup_import_mode),
                         style = MaterialTheme.typography.titleSmall,
                     )
 
@@ -488,7 +493,7 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                                 jsonImportMode = BoardImportMerger.Mode.ADD
                             },
                         )
-                        Text("Add boards")
+                        Text(stringResource(R.string.backup_add_boards))
                     }
 
                     Row(
@@ -500,15 +505,14 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                                 jsonImportMode = BoardImportMerger.Mode.REPLACE
                             },
                         )
-                        Text("Replace all boards")
+                        Text(stringResource(R.string.backup_replace_all_boards))
                     }
 
                     Text(
                         if (jsonImportMode == BoardImportMerger.Mode.ADD) {
-                            "Selected boards will be added. Existing boards and global settings remain unchanged."
+                            stringResource(R.string.backup_json_add_description)
                         } else {
-                            "All existing boards will be replaced by the selected boards. " +
-                                "Global settings will be restored from the backup."
+                            stringResource(R.string.backup_json_replace_description)
                         },
                     )
                     if (candidate.unavailableSounds.isNotEmpty()) {
@@ -519,9 +523,7 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
 
                         if (unavailableSelectedSounds.isNotEmpty()) {
                             Text(
-                                "Warning: ${unavailableSelectedSounds.size} audio reference(s) " +
-                                    "are unavailable on this device. These sounds will not play " +
-                                    "until relinked.",
+                                stringResource(R.string.backup_missing_audio_warning, unavailableSelectedSounds.size),
                                 color = MaterialTheme.colorScheme.error,
                             )
                             Text(
@@ -535,7 +537,7 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                         }
                     }
                     Text(
-                        "A recovery copy of the previous configuration will be saved in private app storage before importing.",
+                        stringResource(R.string.backup_json_recovery_notice),
                     )
                 }
             },
@@ -555,9 +557,9 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                                         mode = BoardImportMerger.Mode.ADD,
                                     )
                                     preview = null
-                                    message = "Configuration imported successfully."
+                                    message = app.getString(R.string.backup_config_import_success)
                                 } catch (e: Exception) {
-                                    message = "Import failed: ${e.message}"
+                                    message = app.getString(R.string.backup_import_error, e.message)
                                 } finally {
                                     busy = false
                                 }
@@ -565,10 +567,15 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                         }
                     },
                 ) {
-                    Text("Import")
+                    Text(stringResource(R.string.backup_import_button))
                 }
             },
-            dismissButton = { TextButton(enabled = !busy, onClick = { preview = null }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(
+                    enabled = !busy,
+                    onClick = { preview = null },
+                ) { Text(stringResource(R.string.cancel)) }
+            },
         )
     }
     if (showJsonReplaceConfirmation) {
@@ -577,15 +584,11 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                 if (!busy) showJsonReplaceConfirmation = false
             },
             title = {
-                Text("Replace all boards?")
+                Text(stringResource(R.string.backup_json_replace_title))
             },
             text = {
                 Text(
-                    "All existing boards will be replaced by the selected boards " +
-                        "from the JSON backup. Global settings will also be replaced. " +
-                        "This cannot be undone directly, but a recovery copy of the " +
-                        "previous configuration will be saved before importing. " +
-                        "Audio files will not be deleted.",
+                    stringResource(R.string.backup_json_replace_confirmation),
                 )
             },
             confirmButton = {
@@ -612,9 +615,9 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
 
                                     preview = null
                                     showJsonReplaceConfirmation = false
-                                    message = "Configuration replaced successfully."
+                                    message = app.getString(R.string.backup_config_replace_success)
                                 } catch (e: Exception) {
-                                    message = "Configuration replace failed: ${e.message}"
+                                    message = app.getString(R.string.backup_config_replace_error, e.message)
                                 } finally {
                                     busy = false
                                 }
@@ -622,7 +625,7 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                         }
                     },
                 ) {
-                    Text("Replace")
+                    Text(stringResource(R.string.backup_replace_button))
                 }
             },
             dismissButton = {
@@ -632,7 +635,7 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                         showJsonReplaceConfirmation = false
                     },
                 ) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             },
         )
@@ -640,15 +643,19 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
     fullPreview?.let { candidate ->
         AlertDialog(
             onDismissRequest = { if (!busy) fullPreview = null },
-            title = { Text("Import boards") },
+            title = { Text(stringResource(R.string.backup_import_boards)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "${candidate.boardCount} board(s), ${candidate.soundCount} sound(s), " +
-                            "${candidate.audioCount} audio file(s).",
+                        stringResource(
+                            R.string.backup_zip_summary,
+                            candidate.boardCount,
+                            candidate.soundCount,
+                            candidate.audioCount,
+                        ),
                     )
                     Text(
-                        "Select boards to import:",
+                        stringResource(R.string.backup_select_import_boards),
                         style = MaterialTheme.typography.titleSmall,
                     )
 
@@ -673,12 +680,12 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                                     },
                                     enabled = !busy,
                                 )
-                                Text("${board.name} (${board.sounds.size} sounds)")
+                                Text(stringResource(R.string.backup_board_sound_count, board.name, board.sounds.size))
                             }
                         }
                     }
                     Text(
-                        "Import mode:",
+                        stringResource(R.string.backup_import_mode),
                         style = MaterialTheme.typography.titleSmall,
                     )
 
@@ -688,7 +695,7 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                             onClick = { importMode = BoardImportMerger.Mode.ADD },
                             enabled = !busy,
                         )
-                        Text("ADD – Keep existing boards and settings")
+                        Text(stringResource(R.string.backup_zip_add_option))
                     }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -697,15 +704,13 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                             onClick = { importMode = BoardImportMerger.Mode.REPLACE },
                             enabled = !busy,
                         )
-                        Text("REPLACE – Replace all boards and settings")
+                        Text(stringResource(R.string.backup_zip_replace_option))
                     }
                     Text(
                         if (importMode == BoardImportMerger.Mode.ADD) {
-                            "Selected boards will be added. Existing boards and settings " +
-                                "will be preserved. Duplicate board names will be renamed."
+                            stringResource(R.string.backup_zip_add_description)
                         } else {
-                            "WARNING: All existing boards and settings will be replaced " +
-                                "by the selected boards and the backup settings."
+                            stringResource(R.string.backup_zip_replace_description)
                         },
                         color =
                             if (importMode == BoardImportMerger.Mode.REPLACE) {
@@ -716,15 +721,15 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                     )
                     Text(
                         if (useExternalStorage) {
-                            "Audio will be imported into a folder you select. Existing files will not be overwritten."
+                            stringResource(R.string.backup_external_storage_description)
                         } else {
-                            "Audio will be copied into private app storage."
+                            stringResource(R.string.backup_internal_storage_description)
                         },
                     )
-                    Text("A recovery copy of the previous configuration will be saved.")
+                    Text(stringResource(R.string.backup_zip_recovery_notice))
 
                     Text(
-                        "Audio storage location:",
+                        stringResource(R.string.backup_audio_storage_location),
                         style = MaterialTheme.typography.titleSmall,
                     )
 
@@ -736,7 +741,7 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                             onClick = { useExternalStorage = false },
                             enabled = !busy,
                         )
-                        Text("Internal app storage (default)")
+                        Text(stringResource(R.string.backup_internal_storage_option))
                     }
 
                     Row(
@@ -747,7 +752,7 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                             onClick = { useExternalStorage = true },
                             enabled = !busy,
                         )
-                        Text("Selected folder (external storage)")
+                        Text(stringResource(R.string.backup_external_storage_option))
                     }
                 }
             },
@@ -771,10 +776,10 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                             )
                         }
                     },
-                ) { Text("Restore") }
+                ) { Text(stringResource(R.string.backup_restore_button)) }
             },
             dismissButton = {
-                TextButton(enabled = !busy, onClick = { fullPreview = null }) { Text("Cancel") }
+                TextButton(enabled = !busy, onClick = { fullPreview = null }) { Text(stringResource(R.string.cancel)) }
             },
         )
     }
@@ -784,14 +789,11 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                 if (!busy) showReplaceConfirmation = false
             },
             title = {
-                Text("Replace existing boards?")
+                Text(stringResource(R.string.backup_zip_replace_title))
             },
             text = {
                 Text(
-                    "WARNING: All existing boards and settings will be replaced " +
-                        "by the selected boards and the backup settings.\n\n" +
-                        "This action cannot be undone directly. " +
-                        "A recovery copy of the previous configuration will be saved.",
+                    stringResource(R.string.backup_zip_replace_confirmation),
                 )
             },
             confirmButton = {
@@ -818,7 +820,7 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                         }
                     },
                 ) {
-                    Text("Replace")
+                    Text(stringResource(R.string.backup_replace_button))
                 }
             },
             dismissButton = {
@@ -828,7 +830,7 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                         showReplaceConfirmation = false
                     },
                 ) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             },
         )
@@ -836,9 +838,13 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
     message?.let { text ->
         AlertDialog(
             onDismissRequest = { message = null },
-            title = { Text("Backup & Restore") },
+            title = { Text(stringResource(R.string.nav_backup_restore)) },
             text = { Text(text) },
-            confirmButton = { TextButton(onClick = { message = null }) { Text("OK") } },
+            confirmButton = {
+                TextButton(
+                    onClick = { message = null },
+                ) { Text(stringResource(R.string.backup_ok_button)) }
+            },
         )
     }
 }

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Soundboard NG</string>
+    <string name="app_name" translatable="false">Soundboard NG</string>
 
     <!-- Main screen -->
     <string name="add_sound">Add sound</string>
@@ -60,13 +60,13 @@
     <string name="about_508_body">Soundboard NG is a modified fork of Soundboard by 508.dev. The original project and its contributors retain credit for their work. This fork adds extended playback controls, multiple boards, configurable fades, and backup and restore features. It is not an official release of 508.dev.</string>
 
     <string name="about_link_repo">Source code</string>
-    <string name="about_link_repo_url">https://github.com/lattemacchiato/soundboard</string>
+    <string name="about_link_repo_url" translatable="false">https://github.com/lattemacchiato/soundboard</string>
 
     <string name="about_monetization_title">Open source</string>
     <string name="about_monetization_body">Soundboard NG is free software under the GNU General Public License version 3. Source code and modification history are available in the project repository.</string>
 
-    <string name="about_link_508">508.dev</string>
-    <string name="about_link_508_url">https://508.dev</string>
+    <string name="about_link_508" translatable="false">508.dev</string>
+    <string name="about_link_508_url" translatable="false">https://508.dev</string>
 
     <string name="about_licenses_summary">Open-source licenses for this app and its dependencies</string>
     <string name="about_license_line">Soundboard NG is based on Soundboard by 508.dev and is licensed under the GNU General Public License v3.</string>
@@ -98,4 +98,132 @@
         <item quantity="one">%d sound playing</item>
         <item quantity="other">%d sounds playing</item>
     </plurals>
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_default_tap">Default tap behavior for new sounds</string>
+    <string name="settings_tap_pause_resume">Pause / Resume</string>
+    <string name="settings_tap_stop_restart">Stop / Restart</string>
+    <string name="settings_playback">Playback</string>
+    <string name="settings_default_loop">Loop new sounds by default</string>
+    <string name="settings_default_loop_hint">Applies only to newly added sounds</string>
+    <string name="settings_simultaneous">Allow simultaneous playback</string>
+    <string name="settings_default_fade">Default fade for new sounds</string>
+    <string name="settings_fade_in">Fade-in</string>
+    <string name="settings_fade_out">Fade-out</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_button_size">Default sound button size</string>
+    <string name="settings_button_size_level">Level %1$d of 5</string>
+    <string name="settings_fade_off">Off</string>
+    <string name="settings_fade_value">%1$s: %2$s</string>
+    <string name="settings_fade_seconds">%1$s s</string>
+    <!-- Navigation and board management -->
+    <string name="nav_choose_board">Choose board</string>
+    <string name="nav_manage_board">Manage board</string>
+    <string name="nav_backup_restore">Backup &amp; Restore</string>
+    <string name="nav_no_board_selected">No board selected</string>
+    <string name="board_new">New board</string>
+    <string name="board_rename">Rename board</string>
+    <string name="board_name">Board name</string>
+    <string name="board_section">Board</string>
+    <string name="board_sound_button_size">Sound button size</string>
+    <string name="board_use_global_default">Use global default</string>
+    <string name="board_global_level">Global level: %1$d of 5</string>
+    <string name="board_custom_level">Custom level: %1$d of 5</string>
+    <string name="board_delete_title">Delete board?</string>
+    <string name="board_delete_message">The board and its sound entries will be removed. Audio files will not be deleted.</string>
+    <string name="exit_title">Exit Soundboard?</string>
+    <string name="exit_message">One or more sounds are playing or paused. Exiting will stop all playback.</string>
+    <string name="exit_stop_all">Exit &amp; Stop All</string>
+    <plurals name="boards_total">
+        <item quantity="one">%d board total</item>
+        <item quantity="other">%d boards total</item>
+    </plurals>
+    <!-- Sound options -->
+    <string name="sound_edit">Edit sound</string>
+    <string name="sound_delete">Delete sound</string>
+    <string name="sound_loop">Loop</string>
+    <string name="sound_repeat_continuously">Repeat continuously</string>
+    <string name="sound_play_once">Play once</string>
+    <string name="sound_playback_segment">Playback segment</string>
+    <string name="sound_play_complete_file">Play complete file</string>
+    <string name="sound_custom_playback_range">Custom playback range</string>
+    <string name="sound_playback_order">Playback order</string>
+    <string name="sound_order_alphabetical">Alphabetical</string>
+    <string name="sound_order_shuffle">Shuffle</string>
+    <string name="sound_tap_behavior">Tap behavior</string>
+    <string name="sound_lock_editing">Lock editing</string>
+    <string name="sound_unlock_editing">Unlock editing</string>
+    <string name="sound_add_folder">Add folder</string>
+    <string name="rename_folder_title">Rename folder</string>
+    <string name="delete_sound_message">The sound will be removed from the board. Unused audio files in the app\'s internal storage are automatically deleted. External audio files remain unchanged.</string>
+    <string name="delete_folder_message">The folder will be removed from the board. Unused audio files in the app\'s internal storage are automatically deleted. Files in external folders remain unchanged.</string>
+    <string name="delete_folder_title">Remove folder “%1$s”?</string>
+    <string name="segment_load_error">Unable to load audio file</string>
+    <string name="segment_loading_duration">Loading audio duration...</string>
+    <string name="segment_duration">Duration: %1$s</string>
+    <string name="segment_start">Start: %1$s</string>
+    <string name="segment_start_input">Start (mm.ss.SSS)</string>
+    <string name="segment_end">End: %1$s</string>
+    <string name="segment_end_input">End (mm.ss.SSS)</string>
+    <string name="segment_end_of_file">End of file</string>
+    <string name="segment_reset">Reset to full file</string>
+    <string name="segment_stop_preview">Stop preview</string>
+    <string name="segment_play_preview">Play preview</string>
+    <string name="backup_boards_section">Boards including audio files &amp; folders</string>
+    <string name="backup_boards_description">Export or import selected boards with their settings and audio files. ZIP backups can also be transferred to another device.</string>
+    <string name="backup_export_boards">Export boards</string>
+    <string name="backup_import_boards">Import boards</string>
+    <string name="backup_configuration_section">Configuration only</string>
+    <string name="backup_configuration_description">Export or import board configurations and global preferences as JSON, without audio files. Referenced audio must remain accessible.</string>
+    <string name="backup_export_configuration">Export configuration</string>
+    <string name="backup_import_configuration">Import configuration</string>
+    <string name="backup_select_export_boards">Select boards to export</string>
+    <string name="backup_json_import_description">Select the boards to import from this JSON backup. Audio files are not included.</string>
+    <string name="backup_selected_boards">Boards (%1$d of %2$d selected):</string>
+    <string name="backup_import_mode">Import mode</string>
+    <string name="backup_add_boards">Add boards</string>
+    <string name="backup_replace_all_boards">Replace all boards</string>
+    <string name="backup_json_add_description">Selected boards will be added. Existing boards and global settings remain unchanged.</string>
+    <string name="backup_json_replace_description">All existing boards will be replaced by the selected boards. Global settings will be restored from the backup.</string>
+    <string name="backup_zip_summary">%1$d board(s), %2$d sound(s), %3$d audio file(s).</string>
+    <string name="backup_select_import_boards">Select boards to import:</string>
+    <string name="backup_board_sound_count">%1$s (%2$d sounds)</string>
+    <string name="backup_zip_add_option">ADD – Keep existing boards and settings</string>
+    <string name="backup_zip_replace_option">REPLACE – Replace all boards and settings</string>
+    <string name="backup_zip_add_description">Selected boards will be added. Existing boards and settings will be preserved. Duplicate board names will be renamed.</string>
+    <string name="backup_zip_replace_description">WARNING: All existing boards and settings will be replaced by the selected boards and the backup settings.</string>
+    <string name="backup_external_storage_description">Audio will be imported into a folder you select. Existing files will not be overwritten.</string>
+    <string name="backup_internal_storage_description">Audio will be copied into private app storage.</string>
+    <string name="backup_audio_storage_location">Audio storage location:</string>
+    <string name="backup_internal_storage_option">Internal app storage (default)</string>
+    <string name="backup_external_storage_option">Selected folder (external storage)</string>
+    <string name="backup_missing_audio_warning">Warning: %1$d audio reference(s) are unavailable on this device. These sounds will not play until relinked.</string>
+    <string name="backup_json_recovery_notice">A recovery copy of the previous configuration will be saved in private app storage before importing.</string>
+    <string name="backup_zip_recovery_notice">A recovery copy of the previous configuration will be saved.</string>
+    <string name="backup_json_replace_title">Replace all boards?</string>
+    <string name="backup_json_replace_confirmation">All existing boards will be replaced by the selected boards from the JSON backup. Global settings will also be replaced. This cannot be undone directly, but a recovery copy of the previous configuration will be saved before importing. Audio files will not be deleted.</string>
+    <string name="backup_zip_replace_title">Replace existing boards?</string>
+    <string name="backup_zip_replace_confirmation">WARNING: All existing boards and settings will be replaced by the selected boards and the backup settings.\n\nThis action cannot be undone directly. A recovery copy of the previous configuration will be saved.</string>
+    <string name="backup_replace_button">Replace</string>
+    <string name="backup_import_button">Import</string>
+    <string name="backup_restore_button">Restore</string>
+    <string name="backup_zip_import_success">ZIP import completed successfully.</string>
+    <string name="backup_zip_import_error">ZIP import failed: %1$s</string>
+    <string name="backup_restore_success">Full backup restored successfully.</string>
+    <string name="backup_restore_error">Full backup restore failed: %1$s</string>
+    <string name="backup_folder_error">Cannot access selected folder: %1$s</string>
+    <string name="backup_local_storage_only">Only local device storage or SD cards are supported for audio import.</string>
+    <string name="backup_config_export_success">Configuration exported successfully.</string>
+    <string name="backup_export_error">Export failed: %1$s</string>
+    <string name="backup_import_error">Import failed: %1$s</string>
+    <string name="backup_zip_export_success">Full backup exported successfully.</string>
+    <string name="backup_zip_export_error">ZIP export failed: %1$s</string>
+    <string name="backup_config_import_success">Configuration imported successfully.</string>
+    <string name="backup_config_replace_success">Configuration replaced successfully.</string>
+    <string name="backup_config_replace_error">Configuration replace failed: %1$s</string>
+    <string name="backup_ok_button">OK</string>
 </resources>

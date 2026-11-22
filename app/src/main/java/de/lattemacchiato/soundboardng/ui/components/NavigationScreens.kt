@@ -34,7 +34,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import de.lattemacchiato.soundboardng.R
 import de.lattemacchiato.soundboardng.data.SoundBoard
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,7 +50,7 @@ private fun NavigationPage(
     Scaffold(topBar = {
         TopAppBar(title = { Text(title) }, navigationIcon = {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.nav_back))
             }
         })
     }, content = content)
@@ -62,7 +65,7 @@ fun BoardSelectorScreen(
     onCreate: () -> Unit,
     onBack: () -> Unit,
 ) {
-    NavigationPage("Choose board", onBack) { padding ->
+    NavigationPage(stringResource(R.string.nav_choose_board), onBack) { padding ->
         LazyColumn(modifier = Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(12.dp)) {
             items(boards, key = { it.id }) { board ->
                 NavigationDrawerItem(
@@ -85,13 +88,13 @@ fun BoardSelectorScreen(
                         onClick = onCreate,
                         enabled = !locked,
                     ) {
-                        Text("New board")
+                        Text(stringResource(R.string.board_new))
                     }
 
                     HorizontalDivider()
 
                     Text(
-                        text = "${boards.size} boards total",
+                        text = pluralStringResource(R.plurals.boards_total, boards.size, boards.size),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -112,13 +115,13 @@ fun BoardManagementScreen(
     onDelete: () -> Unit,
     onBack: () -> Unit,
 ) {
-    NavigationPage("Manage board", onBack) { padding ->
+    NavigationPage(stringResource(R.string.nav_manage_board), onBack) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                "Board",
+                stringResource(R.string.board_section),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -130,7 +133,7 @@ fun BoardManagementScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "Name",
+                        stringResource(R.string.rename_label),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -146,7 +149,7 @@ fun BoardManagementScreen(
                 ) {
                     Icon(
                         Icons.Filled.Edit,
-                        contentDescription = "Rename board",
+                        contentDescription = stringResource(R.string.board_rename),
                     )
                 }
 
@@ -156,7 +159,7 @@ fun BoardManagementScreen(
                 ) {
                     Icon(
                         Icons.Filled.Delete,
-                        contentDescription = "Delete board",
+                        contentDescription = stringResource(R.string.board_delete_title),
                     )
                 }
             }
@@ -176,7 +179,7 @@ fun BoardManagementScreen(
             }
 
             Text(
-                "Sound button size",
+                stringResource(R.string.board_sound_button_size),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -185,7 +188,7 @@ fun BoardManagementScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Use global default", modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.board_use_global_default), modifier = Modifier.weight(1f))
 
                 Switch(
                     checked = useGlobal,
@@ -203,9 +206,9 @@ fun BoardManagementScreen(
             Text(
                 text =
                     if (useGlobal) {
-                        "Global level: $defaultRowHeightLevel of 5"
+                        stringResource(R.string.board_global_level, defaultRowHeightLevel)
                     } else {
-                        "Custom level: ${sliderLevel.toInt().coerceIn(1, 5)} of 5"
+                        stringResource(R.string.board_custom_level, sliderLevel.toInt().coerceIn(1, 5))
                     },
                 style = MaterialTheme.typography.labelMedium,
             )

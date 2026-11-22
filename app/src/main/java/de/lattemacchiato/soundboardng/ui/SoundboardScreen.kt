@@ -47,6 +47,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -158,7 +159,10 @@ fun SoundboardScreen(
             IconButton(onClick = { viewModel.setLocked(!locked) }) {
                 Icon(
                     imageVector = if (locked) Icons.Filled.Lock else Icons.Filled.LockOpen,
-                    contentDescription = if (locked) "Unlock editing" else "Lock editing",
+                    contentDescription =
+                        stringResource(
+                            if (locked) R.string.sound_unlock_editing else R.string.sound_lock_editing,
+                        ),
                 )
             }
             if (anyPlaying) {
@@ -178,7 +182,7 @@ fun SoundboardScreen(
                     ) {
                         Icon(
                             Icons.Filled.CreateNewFolder,
-                            contentDescription = "Add folder",
+                            contentDescription = stringResource(R.string.sound_add_folder),
                         )
                     }
 
@@ -263,7 +267,7 @@ fun SoundboardScreen(
                             ) {
                                 Icon(
                                     Icons.Filled.Edit,
-                                    contentDescription = "Edit sound",
+                                    contentDescription = stringResource(R.string.sound_edit),
                                 )
                             }
 
@@ -275,15 +279,21 @@ fun SoundboardScreen(
                             ) {
                                 Icon(
                                     Icons.Filled.Delete,
-                                    contentDescription = "Delete sound",
+                                    contentDescription = stringResource(R.string.sound_delete),
                                 )
                             }
                         }
                     },
                 )
                 ListItem(
-                    headlineContent = { Text("Loop") },
-                    supportingContent = { Text(if (currentSound.loop) "Repeat continuously" else "Play once") },
+                    headlineContent = { Text(stringResource(R.string.sound_loop)) },
+                    supportingContent = {
+                        Text(
+                            stringResource(
+                                if (currentSound.loop) R.string.sound_repeat_continuously else R.string.sound_play_once,
+                            ),
+                        )
+                    },
                     trailingContent = {
                         Switch(
                             checked = currentSound.loop,
@@ -293,15 +303,15 @@ fun SoundboardScreen(
                 )
                 if (currentSound.type == SoundType.FILE) {
                     ListItem(
-                        headlineContent = { Text("Playback segment") },
+                        headlineContent = { Text(stringResource(R.string.sound_playback_segment)) },
                         supportingContent = {
                             Text(
                                 if (currentSound.startPositionMs == 0L &&
                                     currentSound.endPositionMs == null
                                 ) {
-                                    "Play complete file"
+                                    stringResource(R.string.sound_play_complete_file)
                                 } else {
-                                    "Custom playback range"
+                                    stringResource(R.string.sound_custom_playback_range)
                                 },
                             )
                         },
@@ -321,7 +331,7 @@ fun SoundboardScreen(
                                 .padding(horizontal = 16.dp, vertical = 8.dp),
                     ) {
                         Text(
-                            text = "Playback order",
+                            text = stringResource(R.string.sound_playback_order),
                             style = MaterialTheme.typography.titleMedium,
                         )
 
@@ -333,8 +343,8 @@ fun SoundboardScreen(
                         ) {
                             val orders =
                                 listOf(
-                                    PlaybackOrder.ALPHABETICAL to "Alphabetical",
-                                    PlaybackOrder.SHUFFLE to "Shuffle",
+                                    PlaybackOrder.ALPHABETICAL to stringResource(R.string.sound_order_alphabetical),
+                                    PlaybackOrder.SHUFFLE to stringResource(R.string.sound_order_shuffle),
                                 )
 
                             orders.forEachIndexed { index, (order, label) ->
@@ -361,7 +371,7 @@ fun SoundboardScreen(
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
                     Text(
-                        text = "Tap behavior",
+                        text = stringResource(R.string.sound_tap_behavior),
                         style = MaterialTheme.typography.titleMedium,
                     )
 
@@ -373,8 +383,8 @@ fun SoundboardScreen(
                     ) {
                         val behaviors =
                             listOf(
-                                TapBehavior.PAUSE_RESUME to "Pause / Resume",
-                                TapBehavior.STOP_RESTART to "Stop / Restart",
+                                TapBehavior.PAUSE_RESUME to stringResource(R.string.settings_tap_pause_resume),
+                                TapBehavior.STOP_RESTART to stringResource(R.string.settings_tap_stop_restart),
                             )
 
                         behaviors.forEachIndexed { index, (behavior, label) ->
@@ -393,8 +403,13 @@ fun SoundboardScreen(
                         }
                     }
                 }
-                FadeSlider("Fade-in", currentSound.fadeInMs) { viewModel.setFade(sound.id, true, it) }
-                FadeSlider("Fade-out", currentSound.fadeOutMs) { viewModel.setFade(sound.id, false, it) }
+                FadeSlider(
+                    stringResource(R.string.settings_fade_in),
+                    currentSound.fadeInMs,
+                ) { viewModel.setFade(sound.id, true, it) }
+                FadeSlider(stringResource(R.string.settings_fade_out), currentSound.fadeOutMs) {
+                    viewModel.setFade(sound.id, false, it)
+                }
             }
         }
     }
@@ -425,8 +440,29 @@ fun SoundboardScreen(
         deleteTarget?.let { sound ->
             AlertDialog(
                 onDismissRequest = { deleteTarget = null },
-                title = { Text(stringResource(R.string.delete_title, sound.name)) },
-                text = { Text(stringResource(R.string.delete_message)) },
+                title = {
+                    Text(
+                        stringResource(
+                            if (sound.type == SoundType.FOLDER) {
+                                R.string.delete_folder_title
+                            } else {
+                                R.string.delete_title
+                            },
+                            sound.name,
+                        ),
+                    )
+                },
+                text = {
+                    Text(
+                        stringResource(
+                            if (sound.type == SoundType.FOLDER) {
+                                R.string.delete_folder_message
+                            } else {
+                                R.string.delete_sound_message
+                            },
+                        ),
+                    )
+                },
                 confirmButton = {
                     TextButton(onClick = {
                         viewModel.remove(sound.id)
@@ -470,9 +506,29 @@ private fun FadeSlider(
     durationMs: Int,
     onCommit: (Int) -> Unit,
 ) {
+    val configuration = LocalConfiguration.current
     var value by remember(durationMs) { mutableFloatStateOf(durationMs.toFloat()) }
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
-        Text("$label: " + if (value < 250f) "Off" else "%.1f s".format(java.util.Locale.US, value / 1000f))
+        val fadeDurationText =
+            if (value < 250f) {
+                stringResource(R.string.settings_fade_off)
+            } else {
+                val seconds =
+                    String.format(
+                        configuration.locales[0],
+                        "%.1f",
+                        value / 1000f,
+                    )
+                stringResource(R.string.settings_fade_seconds, seconds)
+            }
+
+        Text(
+            stringResource(
+                R.string.settings_fade_value,
+                label,
+                fadeDurationText,
+            ),
+        )
         Slider(
             value = value,
             onValueChange = { value = (it / 500f).toInt().coerceIn(0, 10) * 500f },
