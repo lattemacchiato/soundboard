@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/lattemacchiato/soundboard/compare/v1.5.0...v1.6.0) (2026-11-23)
+
+
+### Features
+
+* add bilingual privacy policy and in-app privacy notice ([#32](https://github.com/lattemacchiato/soundboard/issues/32)) ([26430b8](https://github.com/lattemacchiato/soundboard/commit/26430b8588ec321f0751b1f9b4cfa3cbff0c2765))
+
 ## [1.5.0](https://github.com/lattemacchiato/soundboard/compare/v1.4.0...v1.5.0) (2026-11-23)
 
 
