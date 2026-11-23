@@ -1,0 +1,10 @@
+Features:
+
+- add German localization with English fallback
+- improve backup restore UX and add selective JSON configuration import export
+- support selective board ZIP export and import
+
+Bug Fixes:
+
+- make backup import dialogs scrollable
+- **release:** deduplicate Fastlane changelog entries
