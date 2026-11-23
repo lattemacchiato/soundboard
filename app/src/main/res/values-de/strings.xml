@@ -52,6 +52,10 @@
     <string name="about_app_title">Über diese App</string>
     <string name="about_app_body">Soundboard NG ist ein Offline-Soundboard für Theateraufführungen, Live-Veranstaltungen und andere Produktionen. Organisiere Sounds auf mehreren Boards, spiele sie ab, pausiere sie, starte sie neu oder wiederhole sie in einer Schleife. Passe Lautstärke und Ein- und Ausblendungen an und sichere oder stelle deine Konfiguration und Audiodateien wieder her.</string>
 
+    <string name="about_privacy_title">Datenschutz</string>
+    <string name="about_privacy_body">Soundboard NG verarbeitet Audiodateien und App-Einstellungen lokal auf deinem Gerät. Die App übermittelt keine Daten an den Entwickler und verwendet weder Analyse- noch Werbe- oder Trackingdienste. Abhängig von deinen Geräteeinstellungen können Android-Systembackups bestimmte App-Daten enthalten.</string>
+    <string name="about_link_privacy">Datenschutzerklärung</string>
+
     <string name="about_508_title">Ursprüngliches Projekt</string>
     <string name="about_508_body">Soundboard NG ist eine modifizierte Version (Fork) von Soundboard by 508.dev. Die Anerkennung für das ursprüngliche Projekt und die Arbeit seiner Mitwirkenden bleibt bestehen. Dieser Fork ergänzt erweiterte Wiedergabefunktionen, mehrere Boards, einstellbare Ein- und Ausblendungen sowie Sicherungs- und Wiederherstellungsfunktionen. Es handelt sich nicht um eine offizielle Veröffentlichung von 508.dev.</string>
 
