@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.4.0](https://github.com/lattemacchiato/soundboard/compare/v1.3.1...v1.4.0) (2026-11-20)
+
+
+### Features
+
+* allow multiple sound tiles referencing the same audio ([5b6a617](https://github.com/lattemacchiato/soundboard/commit/5b6a6176e9ded13a98b55ce4599fbd090a6b91ec))
+* allow multiple sound tiles referencing the same audio ([934eb8b](https://github.com/lattemacchiato/soundboard/commit/934eb8b741fe1a56a173c8c08ff470f5c104835f))
+* blink sound tiles during manual fades ([0c27e78](https://github.com/lattemacchiato/soundboard/commit/0c27e78355207f80b635f2c3a78060e23c1e1fa1))
+* support local external storage for ZIP restore ([0b55749](https://github.com/lattemacchiato/soundboard/commit/0b55749a9593d373a9e298ee3f4e7f71e2c6866b))
+
+
+### Bug Fixes
+
+* filter unsupported files from folder playback ([5c4d74c](https://github.com/lattemacchiato/soundboard/commit/5c4d74ca97384985de2dfadf2081c67d8b7745ef))
+* filter unsupported files from folder playback ([ee8f28f](https://github.com/lattemacchiato/soundboard/commit/ee8f28f4a020344707b959c75e9e1bb227a94b2d))
+* preserve folder names and reuse existing SAF folders ([4ea91d5](https://github.com/lattemacchiato/soundboard/commit/4ea91d5a29456986128c1a92d9fcee159c8b0634))
+* preserve folder names and reuse existing SAF folders ([35701ed](https://github.com/lattemacchiato/soundboard/commit/35701ed617d811298a9ef93271b3ec1fd80eeda8))
+
 ## [1.3.1](https://github.com/lattemacchiato/soundboard/compare/v1.3.0...v1.3.1) (2026-11-09)
 
 
