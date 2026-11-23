@@ -75,6 +75,10 @@ fun AboutScreen(
                 titleRes = R.string.about_privacy_title,
                 bodyRes = R.string.about_privacy_body,
             )
+            LinkItem(
+                labelRes = R.string.about_link_privacy,
+                urlRes = R.string.about_link_privacy_url,
+            )
             AboutSection(
                 titleRes = R.string.about_508_title,
                 bodyRes = R.string.about_508_body,
