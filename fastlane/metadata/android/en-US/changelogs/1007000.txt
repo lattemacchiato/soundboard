@@ -1,0 +1,3 @@
+Features:
+
+- link privacy policy from About screen
