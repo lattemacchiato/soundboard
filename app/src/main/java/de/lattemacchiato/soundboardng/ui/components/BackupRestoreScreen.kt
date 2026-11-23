@@ -440,7 +440,10 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
             onDismissRequest = { if (!busy) preview = null },
             title = { Text(stringResource(R.string.backup_import_configuration)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     Text(
                         stringResource(R.string.backup_json_import_description),
                     )
@@ -454,10 +457,6 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                     )
 
                     Column(
-                        modifier =
-                            Modifier
-                                .heightIn(max = 240.dp)
-                                .verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         candidate.library.boards.forEach { board ->
@@ -645,7 +644,10 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
             onDismissRequest = { if (!busy) fullPreview = null },
             title = { Text(stringResource(R.string.backup_import_boards)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     Text(
                         stringResource(
                             R.string.backup_zip_summary,
@@ -660,10 +662,6 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                     )
 
                     Column(
-                        modifier =
-                            Modifier
-                                .heightIn(max = 240.dp)
-                                .verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         candidate.boards.forEach { board ->
