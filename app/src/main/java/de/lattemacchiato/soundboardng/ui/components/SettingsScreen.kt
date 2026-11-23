@@ -47,6 +47,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -59,7 +60,6 @@ import de.lattemacchiato.soundboardng.SoundboardApp
 import de.lattemacchiato.soundboardng.data.TapBehavior
 import de.lattemacchiato.soundboardng.data.ThemeMode
 import kotlinx.coroutines.launch
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -110,9 +110,9 @@ fun SettingsScreen(onBack: () -> Unit) {
     }
 
     Scaffold(topBar = {
-        TopAppBar(title = { Text("Settings") }, navigationIcon = {
+        TopAppBar(title = { Text(stringResource(R.string.settings_title)) }, navigationIcon = {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.nav_back))
             }
         })
     }) { padding ->
@@ -125,7 +125,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            SettingsSectionTitle("Default tap behavior for new sounds")
+            SettingsSectionTitle(stringResource(R.string.settings_default_tap))
             var tapMenuExpanded by remember { mutableStateOf(false) }
             ExposedDropdownMenuBox(
                 expanded = tapMenuExpanded,
@@ -134,8 +134,8 @@ fun SettingsScreen(onBack: () -> Unit) {
                 OutlinedTextField(
                     value =
                         when (tap) {
-                            TapBehavior.PAUSE_RESUME -> "Pause / Resume"
-                            TapBehavior.STOP_RESTART -> "Stop / Restart"
+                            TapBehavior.PAUSE_RESUME -> stringResource(R.string.settings_tap_pause_resume)
+                            TapBehavior.STOP_RESTART -> stringResource(R.string.settings_tap_stop_restart)
                         },
                     onValueChange = {},
                     readOnly = true,
@@ -148,8 +148,8 @@ fun SettingsScreen(onBack: () -> Unit) {
                     onDismissRequest = { tapMenuExpanded = false },
                 ) {
                     listOf(
-                        TapBehavior.PAUSE_RESUME to "Pause / Resume",
-                        TapBehavior.STOP_RESTART to "Stop / Restart",
+                        TapBehavior.PAUSE_RESUME to stringResource(R.string.settings_tap_pause_resume),
+                        TapBehavior.STOP_RESTART to stringResource(R.string.settings_tap_stop_restart),
                     ).forEach { (behavior, label) ->
                         DropdownMenuItem(
                             text = { Text(label) },
@@ -163,7 +163,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             }
 
             HorizontalDivider()
-            SettingsSectionTitle("Playback")
+            SettingsSectionTitle(stringResource(R.string.settings_playback))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -171,11 +171,11 @@ fun SettingsScreen(onBack: () -> Unit) {
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Loop new sounds by default",
+                        text = stringResource(R.string.settings_default_loop),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Text(
-                        text = "Applies only to newly added sounds",
+                        text = stringResource(R.string.settings_default_loop_hint),
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -191,7 +191,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Text("Allow simultaneous playback", modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.settings_simultaneous), modifier = Modifier.weight(1f))
                 Switch(checked = simultaneous, enabled = !locked, onCheckedChange = { allow ->
                     scope.launch {
                         app.engine.setAllowSimultaneousPlayback(allow)
@@ -201,10 +201,10 @@ fun SettingsScreen(onBack: () -> Unit) {
             }
 
             HorizontalDivider()
-            SettingsSectionTitle("Default fade for new sounds")
+            SettingsSectionTitle(stringResource(R.string.settings_default_fade))
 
             FadeSettingSlider(
-                label = "Fade-in",
+                label = stringResource(R.string.settings_fade_in),
                 durationMs = fadeIn,
                 enabled = !locked,
                 onDurationChange = { duration ->
@@ -213,7 +213,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             )
 
             FadeSettingSlider(
-                label = "Fade-out",
+                label = stringResource(R.string.settings_fade_out),
                 durationMs = fadeOut,
                 enabled = !locked,
                 onDurationChange = { duration ->
@@ -222,10 +222,10 @@ fun SettingsScreen(onBack: () -> Unit) {
             )
 
             HorizontalDivider()
-            SettingsSectionTitle("Appearance")
+            SettingsSectionTitle(stringResource(R.string.settings_appearance))
 
             Text(
-                text = "Theme",
+                text = stringResource(R.string.settings_theme),
                 style = MaterialTheme.typography.bodyMedium,
             )
 
@@ -234,9 +234,9 @@ fun SettingsScreen(onBack: () -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 listOf(
-                    ThemeMode.SYSTEM to "System",
-                    ThemeMode.LIGHT to "Light",
-                    ThemeMode.DARK to "Dark",
+                    ThemeMode.SYSTEM to stringResource(R.string.settings_theme_system),
+                    ThemeMode.LIGHT to stringResource(R.string.settings_theme_light),
+                    ThemeMode.DARK to stringResource(R.string.settings_theme_dark),
                 ).forEach { (mode, label) ->
                     val selected = theme == mode
                     if (selected) {
@@ -260,12 +260,12 @@ fun SettingsScreen(onBack: () -> Unit) {
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Default sound button size",
+                text = stringResource(R.string.settings_button_size),
                 style = MaterialTheme.typography.bodyMedium,
             )
 
             Text(
-                text = "Level ${rowHeightSlider.toInt().coerceIn(1, 5)} of 5",
+                text = stringResource(R.string.settings_button_size_level, rowHeightSlider.toInt().coerceIn(1, 5)),
                 style = MaterialTheme.typography.labelMedium,
             )
 
@@ -350,7 +350,7 @@ private fun FadeSettingSlider(
 
     Column {
         Text(
-            text = "$label: ${formatFade(sliderValue.toInt())}",
+            text = stringResource(R.string.settings_fade_value, label, formatFade(sliderValue.toInt())),
             style = MaterialTheme.typography.bodyMedium,
         )
 
@@ -371,5 +371,15 @@ private fun FadeSettingSlider(
     }
 }
 
-private fun formatFade(durationMs: Int): String =
-    if (durationMs == 0) "Off" else "%.1f s".format(Locale.US, durationMs / 1000f)
+@Composable
+private fun formatFade(durationMs: Int): String {
+    if (durationMs == 0) {
+        return stringResource(R.string.settings_fade_off)
+    }
+
+    val configuration = LocalConfiguration.current
+    val locale = configuration.locales[0]
+
+    val seconds = String.format(locale, "%.1f", durationMs / 1000f)
+    return stringResource(R.string.settings_fade_seconds, seconds)
+}

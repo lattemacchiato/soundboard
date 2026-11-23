@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Main screen -->
+    <string name="add_sound">Sound hinzufügen</string>
+    <string name="empty_title">Noch keine Sounds</string>
+    <string name="empty_body">Tippe auf +, um eine Audiodatei auszuwählen. Die Datei bleibt an ihrem Speicherort – Soundboard merkt sich nur, wo sie zu finden ist.</string>
+    <string name="play">Abspielen</string>
+    <string name="pause">Pause</string>
+    <string name="unavailable">Datei nicht verfügbar</string>
+    <string name="unavailable_body">Die Datei wurde verschoben, umbenannt oder gelöscht, oder die Zugriffsberechtigung wurde entzogen.</string>
+
+    <!-- Navigation -->
+    <string name="nav_menu_content_description">Navigationsmenü öffnen</string>
+    <string name="nav_soundboard">Soundboard</string>
+    <string name="nav_about">Über die App</string>
+    <string name="nav_licenses">Lizenzen</string>
+    <string name="nav_back">Zurück</string>
+
+    <!-- Common actions -->
+    <string name="done">Fertig</string>
+    <string name="edit">Bearbeiten</string>
+    <string name="delete">Löschen</string>
+    <string name="remove">Entfernen</string>
+    <string name="cancel">Abbrechen</string>
+    <string name="stop_all">Alle stoppen</string>
+    <!-- Volume -->
+    <string name="volume_percent">%1$d%%</string>
+    <string name="volume_for">Lautstärke für %1$s</string>
+    <string name="volume_dial_hint">Zum Einstellen der Lautstärke am Regler entlangziehen</string>
+
+    <!-- Rearrange mode -->
+    <string name="rearrange_start">Sounds neu anordnen</string>
+    <string name="rearrange_done">Anordnung abschließen</string>
+    <string name="rearrange_title">Liste neu anordnen</string>
+    <string name="reorder_handle">%1$s zum Verschieben ziehen</string>
+    <string name="sort_label">Sortieren:</string>
+    <string name="sort_by_name">Name</string>
+    <string name="sort_by_volume">Lautstärke</string>
+    <string name="sort_by_playing">Wiedergabe</string>
+
+    <!-- Rename -->
+    <string name="rename_title">Sound umbenennen</string>
+    <string name="rename_label">Name</string>
+    <string name="rename_save">Speichern</string>
+    <string name="rename_content_description">%1$s umbenennen</string>
+
+    <!-- Long-press options -->
+    <string name="delete_title">„%1$s“ entfernen?</string>
+    <string name="delete_message">Der Sound wird vom Board entfernt. Die Audiodatei selbst bleibt auf dem Gerät erhalten, sofern sie nicht im internen App-Speicher liegt und nicht mehr verwendet wird.</string>
+    <!-- About -->
+    <string name="about_version">Version %1$s</string>
+    <string name="about_app_title">Über diese App</string>
+    <string name="about_app_body">Soundboard NG ist ein Offline-Soundboard für Theateraufführungen, Live-Veranstaltungen und andere Produktionen. Organisiere Sounds auf mehreren Boards, spiele sie ab, pausiere sie, starte sie neu oder wiederhole sie in einer Schleife. Passe Lautstärke und Ein- und Ausblendungen an und sichere oder stelle deine Konfiguration und Audiodateien wieder her.</string>
+
+    <string name="about_508_title">Ursprüngliches Projekt</string>
+    <string name="about_508_body">Soundboard NG ist eine modifizierte Version (Fork) von Soundboard by 508.dev. Die Anerkennung für das ursprüngliche Projekt und die Arbeit seiner Mitwirkenden bleibt bestehen. Dieser Fork ergänzt erweiterte Wiedergabefunktionen, mehrere Boards, einstellbare Ein- und Ausblendungen sowie Sicherungs- und Wiederherstellungsfunktionen. Es handelt sich nicht um eine offizielle Veröffentlichung von 508.dev.</string>
+
+    <string name="about_link_repo">Quellcode</string>
+    <string name="about_monetization_title">Open Source</string>
+    <string name="about_monetization_body">Soundboard NG ist freie Software unter der GNU General Public License, Version 3. Der Quellcode und die Änderungshistorie sind im Projekt-Repository verfügbar.</string>
+
+    <string name="about_licenses_summary">Open-Source-Lizenzen dieser App und ihrer Abhängigkeiten</string>
+    <string name="about_license_line">Soundboard NG basiert auf Soundboard von 508.dev und steht unter der GNU General Public License v3.</string>
+
+    <!-- Licenses -->
+    <string name="licenses_app_title">Soundboard NG</string>
+    <string name="licenses_app_body">Veröffentlicht unter der GNU General Public License, Version 3. Du darfst diese App verwenden, untersuchen, weitergeben und verändern, sofern abgeleitete Werke unter derselben Lizenz stehen.</string>
+    <string name="licenses_gpl_link">GPL v3 lesen</string>
+    <string name="licenses_third_party_title">Komponenten von Drittanbietern</string>
+    <string name="licenses_apache_note">Komponenten mit der Kennzeichnung Apache License 2.0 werden unter deren Bedingungen bereitgestellt. Eine Kopie der Lizenz ist unter https://www.apache.org/licenses/LICENSE-2.0 verfügbar. Alle mit dieser App ausgelieferten Abhängigkeiten sind freie Software.</string>
+    <!-- Notification permission explanation (Android 13+) -->
+    <string name="notification_permission_title">Wiedergabebenachrichtigungen</string>
+    <string name="notification_permission_message">Soundboard NG kann Sounds auch dann weiter abspielen, wenn die App im Hintergrund läuft oder der Bildschirm ausgeschaltet ist.\n\nEine Benachrichtigung zeigt dir, wenn Sounds abgespielt werden, und ermöglicht es dir, die gesamte Wiedergabe jederzeit zu stoppen.\n\nDamit diese Benachrichtigung angezeigt werden kann, benötigt Soundboard NG die Berechtigung, Benachrichtigungen zu senden.\n\nDiese Berechtigung ist optional. Die Soundwiedergabe funktioniert auch ohne sie.</string>
+    <string name="notification_permission_continue">Weiter</string>
+
+    <!-- Notification settings -->
+    <string name="notification_settings_section">Benachrichtigungen</string>
+    <string name="notification_settings_title">Wiedergabebenachrichtigungen</string>
+    <string name="notification_settings_enabled">Aktiviert</string>
+    <string name="notification_settings_disabled">Deaktiviert</string>
+    <string name="notification_settings_open">Android-Einstellungen öffnen</string>
+
+    <!-- Playback notification -->
+    <string name="playback_channel_name">Wiedergabe</string>
+    <string name="playback_channel_description">Wird während der Wiedergabe in Schleife angezeigt, damit Sounds im Hintergrund weiterlaufen können.</string>
+    <plurals name="sounds_playing">
+        <item quantity="one">%d Sound wird abgespielt</item>
+        <item quantity="other">%d Sounds werden abgespielt</item>
+    </plurals>
+    <!-- Einstellungen -->
+    <string name="settings_title">Einstellungen</string>
+    <string name="settings_default_tap">Standard-Tippverhalten für neue Sounds</string>
+    <string name="settings_tap_pause_resume">Pause / Fortsetzen</string>
+    <string name="settings_tap_stop_restart">Stopp / Neustart</string>
+    <string name="settings_playback">Wiedergabe</string>
+    <string name="settings_default_loop">Neue Sounds standardmäßig wiederholen</string>
+    <string name="settings_default_loop_hint">Gilt nur für neu hinzugefügte Sounds</string>
+    <string name="settings_simultaneous">Gleichzeitige Wiedergabe erlauben</string>
+    <string name="settings_default_fade">Standard-Ein-/Ausblendung für neue Sounds</string>
+    <string name="settings_fade_in">Einblenden</string>
+    <string name="settings_fade_out">Ausblenden</string>
+    <string name="settings_appearance">Darstellung</string>
+    <string name="settings_theme">Design</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Hell</string>
+    <string name="settings_theme_dark">Dunkel</string>
+    <string name="settings_button_size">Standardgröße der Soundkacheln</string>
+    <string name="settings_button_size_level">Stufe %1$d von 5</string>
+    <string name="settings_fade_off">Aus</string>
+    <string name="settings_fade_value">%1$s: %2$s</string>
+    <string name="settings_fade_seconds">%1$s s</string>
+    <!-- Navigation und Board-Verwaltung -->
+    <string name="nav_choose_board">Board auswählen</string>
+    <string name="nav_manage_board">Board verwalten</string>
+    <string name="nav_backup_restore">Sichern und Wiederherstellen</string>
+    <string name="nav_no_board_selected">Kein Board ausgewählt</string>
+    <string name="board_new">Neues Board</string>
+    <string name="board_rename">Board umbenennen</string>
+    <string name="board_name">Boardname</string>
+    <string name="board_section">Board</string>
+    <string name="board_sound_button_size">Größe der Soundkacheln</string>
+    <string name="board_use_global_default">Globale Voreinstellung verwenden</string>
+    <string name="board_global_level">Globale Stufe: %1$d von 5</string>
+    <string name="board_custom_level">Individuelle Stufe: %1$d von 5</string>
+    <string name="board_delete_title">Board löschen?</string>
+    <string name="board_delete_message">Das Board und seine Soundeinträge werden entfernt. Audiodateien werden nicht gelöscht.</string>
+    <string name="exit_title">Soundboard beenden?</string>
+    <string name="exit_message">Mindestens ein Sound wird abgespielt oder ist pausiert. Beim Beenden wird die gesamte Wiedergabe gestoppt.</string>
+    <string name="exit_stop_all">Beenden und alle stoppen</string>
+    <plurals name="boards_total">
+        <item quantity="one">%d Board insgesamt</item>
+        <item quantity="other">%d Boards insgesamt</item>
+    </plurals>
+    <!-- Sound-Optionen -->
+    <string name="sound_edit">Sound bearbeiten</string>
+    <string name="sound_delete">Sound löschen</string>
+    <string name="sound_loop">Wiederholen</string>
+    <string name="sound_repeat_continuously">Endlos wiederholen</string>
+    <string name="sound_play_once">Einmal abspielen</string>
+    <string name="sound_playback_segment">Wiedergabeabschnitt</string>
+    <string name="sound_play_complete_file">Gesamte Datei abspielen</string>
+    <string name="sound_custom_playback_range">Benutzerdefinierter Wiedergabebereich</string>
+    <string name="sound_playback_order">Wiedergabereihenfolge</string>
+    <string name="sound_order_alphabetical">Alphabetisch</string>
+    <string name="sound_order_shuffle">Zufällig</string>
+    <string name="sound_tap_behavior">Tippverhalten</string>
+    <string name="sound_lock_editing">Bearbeitung sperren</string>
+    <string name="sound_unlock_editing">Bearbeitung entsperren</string>
+    <string name="sound_add_folder">Ordner hinzufügen</string>
+    <string name="rename_folder_title">Ordner umbenennen</string>
+    <string name="delete_sound_message">Der Sound wird vom Board entfernt. Nicht mehr verwendete Audiodateien im internen App-Speicher werden automatisch gelöscht. Externe Audiodateien bleiben erhalten.</string>
+    <string name="delete_folder_message">Der Ordner wird vom Board entfernt. Nicht mehr verwendete Audiodateien im internen App-Speicher werden automatisch gelöscht. Dateien in externen Ordnern bleiben erhalten.</string>
+    <string name="delete_folder_title">Ordner „%1$s“ entfernen?</string>
+    <string name="segment_load_error">Audiodatei konnte nicht geladen werden</string>
+    <string name="segment_loading_duration">Audiodauer wird ermittelt...</string>
+    <string name="segment_duration">Dauer: %1$s</string>
+    <string name="segment_start">Start: %1$s</string>
+    <string name="segment_start_input">Start (mm.ss.SSS)</string>
+    <string name="segment_end">Ende: %1$s</string>
+    <string name="segment_end_input">Ende (mm.ss.SSS)</string>
+    <string name="segment_end_of_file">Dateiende</string>
+    <string name="segment_reset">Gesamte Datei verwenden</string>
+    <string name="segment_stop_preview">Vorschau stoppen</string>
+    <string name="segment_play_preview">Vorschau abspielen</string>
+    <string name="backup_boards_section">Boards einschließlich Audiodateien und Ordnern</string>
+    <string name="backup_boards_description">Ausgewählte Boards mit ihren Einstellungen und Audiodateien exportieren oder importieren. ZIP-Sicherungen können auch auf andere Geräte übertragen werden.</string>
+    <string name="backup_export_boards">Boards exportieren</string>
+    <string name="backup_import_boards">Boards importieren</string>
+    <string name="backup_configuration_section">Nur Konfiguration</string>
+    <string name="backup_configuration_description">Board-Konfigurationen und globale Einstellungen ohne Audiodateien als JSON exportieren oder importieren. Die referenzierten Audiodateien müssen weiterhin zugänglich sein.</string>
+    <string name="backup_export_configuration">Konfiguration exportieren</string>
+    <string name="backup_import_configuration">Konfiguration importieren</string>
+    <string name="backup_select_export_boards">Boards für den Export auswählen</string>
+    <string name="backup_json_import_description">Wähle die Boards aus, die aus dieser JSON-Sicherung importiert werden sollen. Audiodateien sind nicht enthalten.</string>
+    <string name="backup_selected_boards">Boards (%1$d von %2$d ausgewählt):</string>
+    <string name="backup_import_mode">Importmodus</string>
+    <string name="backup_add_boards">Boards hinzufügen</string>
+    <string name="backup_replace_all_boards">Alle Boards ersetzen</string>
+    <string name="backup_json_add_description">Die ausgewählten Boards werden hinzugefügt. Vorhandene Boards und globale Einstellungen bleiben unverändert.</string>
+    <string name="backup_json_replace_description">Alle vorhandenen Boards werden durch die ausgewählten Boards ersetzt. Die globalen Einstellungen werden aus der Sicherung wiederhergestellt.</string>
+    <string name="backup_zip_summary">%1$d Board(s), %2$d Sound(s), %3$d Audiodatei(en).</string>
+    <string name="backup_select_import_boards">Boards für den Import auswählen:</string>
+    <string name="backup_board_sound_count">%1$s (%2$d Sounds)</string>
+    <string name="backup_zip_add_option">ADD – Vorhandene Boards und Einstellungen behalten</string>
+    <string name="backup_zip_replace_option">REPLACE – Alle Boards und Einstellungen ersetzen</string>
+    <string name="backup_zip_add_description">Die ausgewählten Boards werden hinzugefügt. Vorhandene Boards und Einstellungen bleiben erhalten. Doppelte Boardnamen werden umbenannt.</string>
+    <string name="backup_zip_replace_description">WARNUNG: Alle vorhandenen Boards und Einstellungen werden durch die ausgewählten Boards und die Einstellungen aus der Sicherung ersetzt.</string>
+    <string name="backup_external_storage_description">Audiodateien werden in einen ausgewählten Ordner importiert. Vorhandene Dateien werden nicht überschrieben.</string>
+    <string name="backup_internal_storage_description">Audiodateien werden in den privaten App-Speicher kopiert.</string>
+    <string name="backup_audio_storage_location">Speicherort für Audiodateien:</string>
+    <string name="backup_internal_storage_option">Interner App-Speicher (Standard)</string>
+    <string name="backup_external_storage_option">Ausgewählter Ordner (externer Speicher)</string>
+    <string name="backup_missing_audio_warning">Warnung: %1$d Audioreferenz(en) sind auf diesem Gerät nicht verfügbar. Diese Sounds können erst nach erneuter Dateizuordnung abgespielt werden.</string>
+    <string name="backup_json_recovery_notice">Vor dem Import wird eine Sicherungskopie der bisherigen Konfiguration im privaten App-Speicher gespeichert.</string>
+    <string name="backup_zip_recovery_notice">Eine Sicherungskopie der bisherigen Konfiguration wird gespeichert.</string>
+    <string name="backup_json_replace_title">Alle Boards ersetzen?</string>
+    <string name="backup_json_replace_confirmation">Alle vorhandenen Boards werden durch die ausgewählten Boards aus der JSON-Sicherung ersetzt. Auch die globalen Einstellungen werden überschrieben. Dies kann nicht unmittelbar rückgängig gemacht werden. Vor dem Import wird jedoch eine Sicherungskopie der bisherigen Konfiguration gespeichert. Audiodateien werden nicht gelöscht.</string>
+    <string name="backup_zip_replace_title">Vorhandene Boards ersetzen?</string>
+    <string name="backup_zip_replace_confirmation">WARNUNG: Alle vorhandenen Boards und Einstellungen werden durch die ausgewählten Boards und die Einstellungen aus der Sicherung ersetzt.\n\nDiese Aktion kann nicht unmittelbar rückgängig gemacht werden. Eine Sicherungskopie der bisherigen Konfiguration wird gespeichert.</string>
+    <string name="backup_replace_button">Ersetzen</string>
+    <string name="backup_import_button">Importieren</string>
+    <string name="backup_restore_button">Wiederherstellen</string>
+    <string name="backup_zip_import_success">ZIP-Import erfolgreich abgeschlossen.</string>
+    <string name="backup_zip_import_error">ZIP-Import fehlgeschlagen: %1$s</string>
+    <string name="backup_restore_success">Vollständige Sicherung erfolgreich wiederhergestellt.</string>
+    <string name="backup_restore_error">Wiederherstellung der vollständigen Sicherung fehlgeschlagen: %1$s</string>
+    <string name="backup_folder_error">Auf den ausgewählten Ordner kann nicht zugegriffen werden: %1$s</string>
+    <string name="backup_local_storage_only">Für den Audioimport werden nur der lokale Gerätespeicher und SD-Karten unterstützt.</string>
+    <string name="backup_config_export_success">Konfiguration erfolgreich exportiert.</string>
+    <string name="backup_export_error">Export fehlgeschlagen: %1$s</string>
+    <string name="backup_import_error">Import fehlgeschlagen: %1$s</string>
+    <string name="backup_zip_export_success">Vollständige Sicherung erfolgreich exportiert.</string>
+    <string name="backup_zip_export_error">ZIP-Export fehlgeschlagen: %1$s</string>
+    <string name="backup_config_import_success">Konfiguration erfolgreich importiert.</string>
+    <string name="backup_config_replace_success">Konfiguration erfolgreich ersetzt.</string>
+    <string name="backup_config_replace_error">Ersetzen der Konfiguration fehlgeschlagen: %1$s</string>
+    <string name="backup_ok_button">OK</string>
+</resources>

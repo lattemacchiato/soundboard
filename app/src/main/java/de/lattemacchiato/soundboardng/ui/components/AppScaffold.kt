@@ -148,11 +148,11 @@ fun AppScaffold() {
                 NavigationDrawerItem(
                     label = {
                         Column {
-                            Text("Choose Board")
+                            Text(stringResource(R.string.nav_choose_board))
                             Text(
                                 text =
                                     boards.firstOrNull { it.id == activeBoardId }?.name
-                                        ?: "No board selected",
+                                        ?: stringResource(R.string.nav_no_board_selected),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -165,21 +165,21 @@ fun AppScaffold() {
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                 )
                 NavigationDrawerItem(
-                    label = { Text("Manage board") },
+                    label = { Text(stringResource(R.string.nav_manage_board)) },
                     icon = { Icon(Icons.Filled.FolderOpen, contentDescription = null) },
                     selected = false,
                     onClick = { openDestination(Destination.BoardManagement) },
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                 )
                 NavigationDrawerItem(
-                    label = { Text("Settings") },
+                    label = { Text(stringResource(R.string.settings_title)) },
                     icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
                     selected = false,
                     onClick = { openDestination(Destination.Settings) },
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                 )
                 NavigationDrawerItem(
-                    label = { Text("Backup & Restore") },
+                    label = { Text(stringResource(R.string.nav_backup_restore)) },
                     icon = { Icon(Icons.Filled.Save, contentDescription = null) },
                     selected = false,
                     onClick = { openDestination(Destination.BackupRestore) },
@@ -253,16 +253,16 @@ fun AppScaffold() {
     if (confirmExit) {
         AlertDialog(
             onDismissRequest = { confirmExit = false },
-            title = { Text("Exit Soundboard?") },
-            text = { Text("One or more sounds are playing or paused. Exiting will stop all playback.") },
+            title = { Text(stringResource(R.string.exit_title)) },
+            text = { Text(stringResource(R.string.exit_message)) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmExit = false
                     exitAndStop()
-                }) { Text("Exit & Stop All") }
+                }) { Text(stringResource(R.string.exit_stop_all)) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmExit = false }) { Text("Cancel") }
+                TextButton(onClick = { confirmExit = false }) { Text(stringResource(R.string.cancel)) }
             },
         )
     }
@@ -274,12 +274,18 @@ fun AppScaffold() {
             }
             AlertDialog(
                 onDismissRequest = { editor = null },
-                title = { Text(if (current is BoardEditor.Create) "New board" else "Rename board") },
+                title = {
+                    Text(
+                        stringResource(
+                            if (current is BoardEditor.Create) R.string.board_new else R.string.board_rename,
+                        ),
+                    )
+                },
                 text = {
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
-                        label = { Text("Board name") },
+                        label = { Text(stringResource(R.string.board_name)) },
                         singleLine = true,
                     )
                 },
@@ -308,9 +314,9 @@ fun AppScaffold() {
                                 }
                             }
                         },
-                    ) { Text("Save") }
+                    ) { Text(stringResource(R.string.rename_save)) }
                 },
-                dismissButton = { TextButton(onClick = { editor = null }) { Text("Cancel") } },
+                dismissButton = { TextButton(onClick = { editor = null }) { Text(stringResource(R.string.cancel)) } },
             )
         }
     }
@@ -318,8 +324,8 @@ fun AppScaffold() {
         deleteBoardId?.let { id ->
             AlertDialog(
                 onDismissRequest = { deleteBoardId = null },
-                title = { Text("Delete board?") },
-                text = { Text("The board and its sound entries will be removed. Audio files will not be deleted.") },
+                title = { Text(stringResource(R.string.board_delete_title)) },
+                text = { Text(stringResource(R.string.board_delete_message)) },
                 confirmButton = {
                     TextButton(onClick = {
                         deleteBoardId = null
@@ -340,9 +346,13 @@ fun AppScaffold() {
                                 drawerState.open()
                             }
                         }
-                    }) { Text("Delete") }
+                    }) { Text(stringResource(R.string.delete)) }
                 },
-                dismissButton = { TextButton(onClick = { deleteBoardId = null }) { Text("Cancel") } },
+                dismissButton = {
+                    TextButton(
+                        onClick = { deleteBoardId = null },
+                    ) { Text(stringResource(R.string.cancel)) }
+                },
             )
         }
     }

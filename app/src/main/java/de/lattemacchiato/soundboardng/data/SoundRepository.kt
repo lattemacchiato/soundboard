@@ -14,6 +14,9 @@ import androidx.datastore.dataStoreFile
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.io.File
 import java.util.UUID
 
 /**
@@ -23,15 +26,73 @@ import java.util.UUID
  * board is one short ordered list with no queries and no relations. See
  * `DECISIONS.md` → "DataStore Over Room".
  */
-class SoundRepository(
+class SoundRepository private constructor(
     private val store: DataStore<SoundLibrary>,
     private val contentResolver: ContentResolver,
+    private val internalAudioCleaner: InternalAudioCleaner?,
 ) {
+    constructor(
+        store: DataStore<SoundLibrary>,
+        contentResolver: ContentResolver,
+    ) : this(store, contentResolver, null)
+
+    private val audioMutationMutex = Mutex()
+
+    /**
+     * Serializes backup restoration and cleanup of app-owned audio.
+     *
+     * Callers must not acquire this lock again from inside [block].
+     */
+    internal suspend fun <T> withAudioMutationLock(block: suspend () -> T): T = audioMutationMutex.withLock { block() }
+
+    /**
+     * Best-effort cleanup of unreferenced app-owned audio.
+     *
+     * Must only be called while holding audioMutationMutex,
+     * after the corresponding DataStore update has succeeded.
+     */
+    internal suspend fun cleanUnreferencedAudio() {
+        val cleaner = internalAudioCleaner ?: return
+
+        try {
+            cleaner.clean(store.data.first())
+        } catch (e: Exception) {
+            android.util.Log.w(
+                "SoundRepository",
+                "Could not clean unreferenced internal audio",
+                e,
+            )
+        }
+    }
+
     suspend fun snapshot(): SoundLibrary = store.data.first()
 
-    /** Single atomic DataStore update; no URI permissions are released on import. */
-    suspend fun restore(library: SoundLibrary) {
-        store.updateData { library }
+    /** Atomically restores configuration without releasing URI permissions. */
+    suspend fun restore(library: SoundLibrary) =
+        withAudioMutationLock {
+            store.updateData { library }
+        }
+
+    /**
+     * Atomically imports selected boards.
+     *
+     * ADD preserves the current boards, settings and active board.
+     * REPLACE replaces the configuration with the selected imported boards.
+     * Existing URI permissions are not released here.
+     */
+    internal suspend fun importBoards(
+        imported: SoundLibrary,
+        selectedBoardIds: Set<String>,
+        mode: BoardImportMerger.Mode,
+    ) {
+        store.updateData { current ->
+            BoardImportMerger.merge(
+                existing = current,
+                imported = imported,
+                selectedBoardIds = selectedBoardIds,
+                mode = mode,
+            )
+        }
     }
 
     val sounds: Flow<List<Sound>> = store.data.map { it.sounds }
@@ -119,15 +180,17 @@ class SoundRepository(
     }
 
     /** Deleting a board never deletes audio files. The final board is protected. */
-    suspend fun deleteBoard(id: String) {
-        val releasedUris = mutableSetOf<String>()
-        store.updateData { before ->
-            val after = before.withoutBoard(id)
-            releasedUris += before.allSoundUris() - after.allSoundUris()
-            after
+    suspend fun deleteBoard(id: String) =
+        withAudioMutationLock {
+            val releasedUris = mutableSetOf<String>()
+            store.updateData { before ->
+                val after = before.withoutBoard(id)
+                releasedUris += before.allSoundUris() - after.allSoundUris()
+                after
+            }
+            cleanUnreferencedAudio()
+            releasedUris.forEach { releaseUriPermission(it.toUri()) }
         }
-        releasedUris.forEach { releaseUriPermission(it.toUri()) }
-    }
 
     /**
      * Adds a picked document to the board, persisting read access to it.
@@ -160,9 +223,11 @@ class SoundRepository(
             }
         if (picked.isEmpty()) return
 
-        store.updateData { library ->
-            picked.fold(library) { acc, (uri, name) ->
-                acc.withSound(id = UUID.randomUUID().toString(), uri = uri.toString(), name = name)
+        withAudioMutationLock {
+            store.updateData { library ->
+                picked.fold(library) { acc, (uri, name) ->
+                    acc.withSound(id = UUID.randomUUID().toString(), uri = uri.toString(), name = name)
+                }
             }
         }
     }
@@ -194,33 +259,37 @@ class SoundRepository(
                 ?: uri.lastPathSegment
                 ?: "Folder"
 
-        store.updateData { library ->
-            library.withSound(
-                id = UUID.randomUUID().toString(),
-                uri = uri.toString(),
-                name = name,
-                type = SoundType.FOLDER,
-            )
+        withAudioMutationLock {
+            store.updateData { library ->
+                library.withSound(
+                    id = UUID.randomUUID().toString(),
+                    uri = uri.toString(),
+                    name = name,
+                    type = SoundType.FOLDER,
+                )
+            }
         }
     }
 
     /**
-     * Removes a sound from the active board.
+     * Removes a sound tile.
      *
      * Releases the persisted URI permission only when no remaining sound
      * on any board references the same URI.
      *
-     * The underlying audio file is never deleted.
+     * The underlying audio file is not deleted here.
      */
-    suspend fun remove(id: String) {
-        val releasedUris = mutableSetOf<String>()
-        store.updateData { before ->
-            val after = before.withoutSound(id)
-            releasedUris += before.allSoundUris() - after.allSoundUris()
-            after
+    suspend fun remove(id: String) =
+        withAudioMutationLock {
+            val releasedUris = mutableSetOf<String>()
+            store.updateData { before ->
+                val after = before.withoutSound(id)
+                releasedUris += before.allSoundUris() - after.allSoundUris()
+                after
+            }
+            cleanUnreferencedAudio()
+            releasedUris.forEach { releaseUriPermission(it.toUri()) }
         }
-        releasedUris.forEach { releaseUriPermission(it.toUri()) }
-    }
 
     suspend fun setSegment(
         id: String,
@@ -304,7 +373,14 @@ class SoundRepository(
                 DataStoreFactory.create(serializer = SoundLibrarySerializer) {
                     context.dataStoreFile(FILE_NAME)
                 }
-            return SoundRepository(store, context.contentResolver)
+            return SoundRepository(
+                store = store,
+                contentResolver = context.contentResolver,
+                internalAudioCleaner =
+                    InternalAudioCleaner(
+                        File(context.filesDir, "backup-audio"),
+                    ),
+            )
         }
     }
 }

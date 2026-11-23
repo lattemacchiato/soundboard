@@ -19,6 +19,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import de.lattemacchiato.soundboardng.R
 import de.lattemacchiato.soundboardng.data.Sound
+import de.lattemacchiato.soundboardng.data.SoundType
 
 /**
  * Modal text field for renaming one sound.
@@ -52,7 +53,17 @@ fun RenameDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.rename_title)) },
+        title = {
+            Text(
+                stringResource(
+                    if (sound.type == SoundType.FOLDER) {
+                        R.string.rename_folder_title
+                    } else {
+                        R.string.rename_title
+                    },
+                ),
+            )
+        },
         text = {
             OutlinedTextField(
                 value = text,
