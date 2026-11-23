@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.5.0](https://github.com/lattemacchiato/soundboard/compare/v1.4.0...v1.5.0) (2026-11-23)
+
+
+### Features
+
+* add German localization with English fallback ([#27](https://github.com/lattemacchiato/soundboard/issues/27)) ([ce75e90](https://github.com/lattemacchiato/soundboard/commit/ce75e905242aa9c333940a92d9cc9faafa9c78d5))
+* improve backup restore UX and add selective JSON configuration import export ([#26](https://github.com/lattemacchiato/soundboard/issues/26)) ([a5906d3](https://github.com/lattemacchiato/soundboard/commit/a5906d3a59a842644586ba3328dec0ab51846209))
+* support selective board ZIP export and import ([#25](https://github.com/lattemacchiato/soundboard/issues/25)) ([9bdb816](https://github.com/lattemacchiato/soundboard/commit/9bdb8164103e637f660f1a7b7207882a764ab1bc))
+
+
+### Bug Fixes
+
+* make backup import dialogs scrollable ([#28](https://github.com/lattemacchiato/soundboard/issues/28)) ([1dde466](https://github.com/lattemacchiato/soundboard/commit/1dde46671e3d5965446645b23326e81c99e8c95e))
+* **release:** deduplicate Fastlane changelog entries ([0821939](https://github.com/lattemacchiato/soundboard/commit/08219395f8aff6b3743fec292529bc63b2b36a01))
+* **release:** deduplicate Fastlane changelog entries ([1d95de3](https://github.com/lattemacchiato/soundboard/commit/1d95de3e02cb24a2d9dacde4d31df653c080c136))
+
 ## [1.4.0](https://github.com/lattemacchiato/soundboard/compare/v1.3.1...v1.4.0) (2026-11-20)
 
 
