@@ -72,6 +72,10 @@ fun AboutScreen(
                 bodyRes = R.string.about_app_body,
             )
             AboutSection(
+                titleRes = R.string.about_privacy_title,
+                bodyRes = R.string.about_privacy_body,
+            )
+            AboutSection(
                 titleRes = R.string.about_508_title,
                 bodyRes = R.string.about_508_body,
             )
