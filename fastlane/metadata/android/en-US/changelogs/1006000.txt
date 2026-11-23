@@ -1,0 +1,3 @@
+Features:
+
+- add bilingual privacy policy and in-app privacy notice
