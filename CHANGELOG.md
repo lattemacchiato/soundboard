@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/lattemacchiato/soundboard/compare/v1.6.0...v1.7.0) (2026-11-23)
+
+
+### Features
+
+* link privacy policy from About screen ([a05b187](https://github.com/lattemacchiato/soundboard/commit/a05b1875ad6eb8c6fac436f409fb2bc844f547ae))
+
 ## [1.6.0](https://github.com/lattemacchiato/soundboard/compare/v1.5.0...v1.6.0) (2026-11-23)
 
 
